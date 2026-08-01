@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Bayesian Trust Optimizer Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <script src="app.js" defer></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Left Navigation Sidebar -->
+        <aside class="nav-sidebar">
+            <div class="brand">
+                <svg class="brand-logo" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>TrustOptimizer</span>
+            </div>
+            
+            <nav class="nav-menu">
+                <a href="#" class="nav-item active" data-tab="dashboard">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" class="nav-item" data-tab="bidders">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    <span>Bidders Database</span>
+                </a>
+                <a href="#" class="nav-item" data-tab="config">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    <span>Parameters Config</span>
+                </a>
+                <a href="#" class="nav-item" data-tab="simulator">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    <span>Simulation Tab</span>
+                </a>
+            </nav>
+            
+            <div class="nav-footer">
+                <span class="version">v2.0.0</span>
+                <span class="system-status">● Ready</span>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <div class="main-workspace">
+            <header class="top-bar">
+                <h2 id="active-tab-title">Dashboard</h2>
+                <div class="top-bar-info">
+                    <span>Active Seed: <strong id="top-seed-display">42</strong></span>
+                    <span class="divider">|</span>
+                    <span>Pool: <strong id="top-bidders-display">20</strong> Bidders</span>
+                </div>
+            </header>
+
+            <div class="view-container">
+                <!-- TAB 1: DASHBOARD VIEW -->
+                <div class="tab-view active" id="view-dashboard">
+                    <!-- Overview Metrics Grid -->
+                    <div class="dashboard-grid">
+                        <div class="overview-panel stat-box">
+                            <div class="stat-meta">Total Pool Size</div>
+                            <div class="stat-number" id="stat-db-count">20</div>
+                        </div>
+                        <div class="overview-panel stat-box">
+                            <div class="stat-meta">Cheapest Bid (B_min)</div>
+                            <div class="stat-number" id="stat-db-price">$150,000</div>
+                        </div>
+                        <div class="overview-panel winner-card">
+                            <div class="winner-inner">
+                                <div class="winner-icon">🏆</div>
+                                <div class="winner-info">
+                                    <div class="stat-meta" style="color:rgba(255,255,255,0.6)">Current Best Bidder</div>
+                                    <div class="winner-title" id="winner-name-display">B007</div>
+                                    <div class="winner-value" id="winner-score-display">Composite Score: Z = 0.7386</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rankings Section -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div>
+                                <h3>Current Bidder Rankings</h3>
+                                <p class="card-subtitle">Ranking of tender applicants sorted by composite score Z. Bidders failing threshold constraints are marked as Excluded.</p>
+                            </div>
+                            <button id="btn-quick-reset" class="btn-outline">Reset Params</button>
+                        </div>
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Rank</th>
+                                        <th>Bidder ID</th>
+                                        <th class="text-right">Price Score</th>
+                                        <th class="text-right">Perf Score</th>
+                                        <th class="text-right">Legal Trust</th>
+                                        <th class="text-right">Financial Score</th>
+                                        <th class="text-right">Technical Score</th>
+                                        <th class="text-right">Fused Trust</th>
+                                        <th class="text-right">Composite Z</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dashboard-table-tbody">
+                                    <!-- Rendered dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 2: BIDDERS DATABASE VIEW -->
+                <div class="tab-view" id="view-bidders">
+                    <div class="card">
+                        <div class="card-header">
+                            <div>
+                                <h3>Raw Bidders Database</h3>
+                                <p class="card-subtitle">Browse and filter the raw input profiles before agent calculations. Click any row to see its mathematical verification.</p>
+                            </div>
+                            <div class="search-bar">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                <input type="text" id="search-bidders-input" placeholder="Search Bidder ID...">
+                            </div>
+                        </div>
+                        <div class="table-container">
+                            <table class="data-table bidders-raw-table">
+                                <thead>
+                                    <tr>
+                                        <th>Bidder ID</th>
+                                        <th class="text-right">Bid Amount</th>
+                                        <th class="text-right">Proj S/F</th>
+                                        <th class="text-right">Civil / Tax Cases</th>
+                                        <th class="text-right">Liquidity</th>
+                                        <th class="text-right">Credit Rating</th>
+                                        <th class="text-right">Profitability</th>
+                                        <th class="text-right">Employees</th>
+                                        <th class="text-right">Eq. Avail</th>
+                                        <th class="text-right">Maturity</th>
+                                        <th class="text-right">Exp (yrs)</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="bidders-table-tbody">
+                                    <!-- Rendered dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 3: CONFIGURATION VIEW -->
+                <div class="tab-view" id="view-config">
+                    <div class="config-layout">
+                        <!-- Weights Panel -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Optimization Weights ($w_1 \dots w_5$)</h3>
+                            </div>
+                            <div class="card-body form-grid">
+                                <div class="slider-box">
+                                    <div class="slider-labels">
+                                        <span>Price weight ($w_1$)</span>
+                                        <span class="value-glow" id="val-cfg-w1">0.20</span>
+                                    </div>
+                                    <input type="range" class="cfg-w-slider" id="cfg-w1" min="0" max="1" step="0.05" value="0.2">
+                                </div>
+                                <div class="slider-box">
+                                    <div class="slider-labels">
+                                        <span>Performance weight ($w_2$)</span>
+                                        <span class="value-glow" id="val-cfg-w2">0.20</span>
+                                    </div>
+                                    <input type="range" class="cfg-w-slider" id="cfg-w2" min="0" max="1" step="0.05" value="0.2">
+                                </div>
+                                <div class="slider-box">
+                                    <div class="slider-labels">
+                                        <span>Legal weight ($w_3$)</span>
+                                        <span class="value-glow" id="val-cfg-w3">0.20</span>
+                                    </div>
+                                    <input type="range" class="cfg-w-slider" id="cfg-w3" min="0" max="1" step="0.05" value="0.2">
+                                </div>
+                                <div class="slider-box">
+                                    <div class="slider-labels">
+                                        <span>Financial weight ($w_4$)</span>
+                                        <span class="value-glow" id="val-cfg-w4">0.20</span>
+                                    </div>
+                                    <input type="range" class="cfg-w-slider" id="cfg-w4" min="0" max="1" step="0.05" value="0.2">
+                                </div>
+                                <div class="slider-box">
+                                    <div class="slider-labels">
+                                        <span>Technical weight ($w_5$)</span>
+                                        <span class="value-glow" id="val-cfg-w5">0.20</span>
+                                    </div>
+                                    <input type="range" class="cfg-w-slider" id="cfg-w5" min="0" max="1" step="0.05" value="0.2">
+                                </div>
+                                <div class="sum-box" id="cfg-weight-sum-box">
+                                    Sum of weights: <strong id="cfg-weight-sum">1.00</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Thresholds and System Params -->
+                        <div class="config-subgrid">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>System Thresholds</h3>
+                                </div>
+                                <div class="card-body form-grid">
+                                    <div class="slider-box">
+                                        <div class="slider-labels">
+                                            <span>Perf Min threshold</span>
+                                            <span class="value-glow" id="val-cfg-t-perf">0.40</span>
+                                        </div>
+                                        <input type="range" class="cfg-t-slider" id="cfg-t-perf" min="0" max="1" step="0.05" value="0.4">
+                                    </div>
+                                    <div class="slider-box">
+                                        <div class="slider-labels">
+                                            <span>Tech Min threshold</span>
+                                            <span class="value-glow" id="val-cfg-t-tech">0.30</span>
+                                        </div>
+                                        <input type="range" class="cfg-t-slider" id="cfg-t-tech" min="0" max="1" step="0.05" value="0.3">
+                                    </div>
+                                    <div class="slider-box">
+                                        <div class="slider-labels">
+                                            <span>Finance Min threshold</span>
+                                            <span class="value-glow" id="val-cfg-t-finance">0.30</span>
+                                        </div>
+                                        <input type="range" class="cfg-t-slider" id="cfg-t-finance" min="0" max="1" step="0.05" value="0.3">
+                                    </div>
+                                    <div class="slider-box">
+                                        <div class="slider-labels">
+                                            <span>Legal Min threshold</span>
+                                            <span class="value-glow" id="val-cfg-t-legal">0.30</span>
+                                        </div>
+                                        <input type="range" class="cfg-t-slider" id="cfg-t-legal" min="0" max="1" step="0.05" value="0.3">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>Simulation Settings</h3>
+                                </div>
+                                <div class="card-body system-inputs">
+                                    <div class="input-row">
+                                        <label for="cfg-seed">Random Seed</label>
+                                        <input type="number" id="cfg-seed" value="42">
+                                    </div>
+                                    <div class="input-row">
+                                        <label for="cfg-count">Bidder Size</label>
+                                        <input type="number" id="cfg-count" value="20" min="4" max="50">
+                                    </div>
+                                    <div class="input-row">
+                                        <label for="cfg-alpha">Beta Prior &alpha;</label>
+                                        <input type="number" id="cfg-alpha" value="1.0" step="0.1">
+                                    </div>
+                                    <div class="input-row">
+                                        <label for="cfg-beta">Beta Prior &beta;</label>
+                                        <input type="number" id="cfg-beta" value="1.0" step="0.1">
+                                    </div>
+                                    <div class="input-row">
+                                        <label for="cfg-lambda">Update Factor &lambda;</label>
+                                        <input type="number" id="cfg-lambda" value="0.8" step="0.05" min="0" max="1">
+                                    </div>
+                                    <div class="btn-group-right">
+                                        <button id="btn-cfg-save" class="btn-primary" style="width:100%;">Apply & Regenerate Dataset</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 4: SIMULATION SANDBOX VIEW -->
+                <div class="tab-view" id="view-simulator">
+                    <div class="simulation-dashboard">
+                        <div class="card sim-control-panel">
+                            <div class="card-header">
+                                <h3>Logging Sandbox Simulator</h3>
+                                <p class="card-subtitle">Select a bidder below, trigger successful or failed project contracts, and inspect the incremental trust history.</p>
+                            </div>
+                            <div class="card-body">
+                                <div class="input-row">
+                                    <label for="sim-select-bidder">Active Target Bidder</label>
+                                    <select id="sim-select-bidder">
+                                        <!-- Populated dynamically -->
+                                    </select>
+                                </div>
+                                
+                                <div class="sim-bidder-stats" id="sim-bidder-details-card">
+                                    <!-- Rendered dynamically -->
+                                </div>
+
+                                <div class="btn-group">
+                                    <button class="btn-success-solid" id="btn-sim-success">Log Project Success (+1 S_i)</button>
+                                    <button class="btn-danger-solid" id="btn-sim-failure">Log Project Failure (+1 F_i)</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card sim-history-panel">
+                            <div class="card-header">
+                                <h3>Simulation Logs</h3>
+                                <p class="card-subtitle">Sequence of simulated contract outcomes logged during this browser session.</p>
+                            </div>
+                            <div class="table-container">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Step</th>
+                                            <th>Bidder ID</th>
+                                            <th>Outcome</th>
+                                            <th class="text-right">S_i</th>
+                                            <th class="text-right">F_i</th>
+                                            <th class="text-right">Old Fused Trust</th>
+                                            <th class="text-right">New Fused Trust</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="sim-logs-tbody">
+                                        <tr>
+                                            <td colspan="7" class="text-center text-muted" style="padding:40px;">No simulations logged yet. Use the control card on the left to start.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Math Inspector Side Drawer -->
+        <aside class="inspector-drawer" id="inspector-drawer">
+            <div class="drawer-header">
+                <h2>Verification Inspector</h2>
+                <button class="drawer-close" id="drawer-close-btn">&times;</button>
+            </div>
+            <div class="drawer-body" id="drawer-content">
+                <!-- Rendered dynamically -->
+            </div>
+        </aside>
+    </div>
+</body>
+</html>

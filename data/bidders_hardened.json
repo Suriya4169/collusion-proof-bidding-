@@ -1,0 +1,994 @@
+[
+  {
+    "bidder_id": "B_brand_new",
+    "price": {
+      "bid_amount": 400000.0
+    },
+    "performance": {
+      "records": []
+    },
+    "legal": {
+      "self_declared_cases": {},
+      "verified_cases": {}
+    },
+    "financial": {
+      "liquidity": 0.7,
+      "credit_rating": 0.7,
+      "profitability": 0.5,
+      "registration_age_years": 3.0,
+      "turnover": 120000.0
+    },
+    "technical": {
+      "qualified_employees": 15,
+      "equipment_availability": 0.6,
+      "technology_maturity": 3.0,
+      "relevant_experience_years": 1.0,
+      "declared_assets": [
+        "Asset_BrandNew_1",
+        "Asset_BrandNew_2"
+      ]
+    },
+    "beneficial_owners": [
+      "Owner_BrandNew"
+    ]
+  },
+  {
+    "bidder_id": "B_legal_test",
+    "price": {
+      "bid_amount": 450000.0
+    },
+    "performance": {
+      "records": [
+        {
+          "client_id": "C1",
+          "successful_projects": 15,
+          "failed_projects": 1,
+          "verification_weight": 1.0
+        }
+      ]
+    },
+    "legal": {
+      "self_declared_cases": {
+        "minor_civil": 2,
+        "tax_violation": 1
+      },
+      "verified_cases": {
+        "minor_civil": 2,
+        "tax_violation": 1
+      }
+    },
+    "financial": {
+      "liquidity": 0.8,
+      "credit_rating": 0.8,
+      "profitability": 0.6,
+      "registration_age_years": 5.0,
+      "turnover": 250000.0
+    },
+    "technical": {
+      "qualified_employees": 25,
+      "equipment_availability": 0.8,
+      "technology_maturity": 6.0,
+      "relevant_experience_years": 8.0,
+      "declared_assets": [
+        "Asset_LegalTest_1",
+        "Asset_LegalTest_2"
+      ]
+    },
+    "beneficial_owners": [
+      "Owner_LegalTest"
+    ]
+  },
+  {
+    "bidder_id": "B_legal_undisclosed",
+    "price": {
+      "bid_amount": 460000.0
+    },
+    "performance": {
+      "records": [
+        {
+          "client_id": "C1",
+          "successful_projects": 12,
+          "failed_projects": 2,
+          "verification_weight": 1.0
+        }
+      ]
+    },
+    "legal": {
+      "self_declared_cases": {
+        "minor_civil": 0,
+        "tax_violation": 0
+      },
+      "verified_cases": {
+        "minor_civil": 2,
+        "tax_violation": 1
+      }
+    },
+    "financial": {
+      "liquidity": 0.8,
+      "credit_rating": 0.8,
+      "profitability": 0.6,
+      "registration_age_years": 5.0,
+      "turnover": 250000.0
+    },
+    "technical": {
+      "qualified_employees": 25,
+      "equipment_availability": 0.8,
+      "technology_maturity": 6.0,
+      "relevant_experience_years": 8.0,
+      "declared_assets": [
+        "Asset_LegalUndisclosed_1"
+      ]
+    },
+    "beneficial_owners": [
+      "Owner_LegalUndisclosed"
+    ]
+  },
+  {
+    "bidder_id": "B_cheap_but_weak",
+    "price": {
+      "bid_amount": 150000.0
+    },
+    "performance": {
+      "records": [
+        {
+          "client_id": "C2",
+          "successful_projects": 10,
+          "failed_projects": 2,
+          "verification_weight": 0.9
+        }
+      ]
+    },
+    "legal": {
+      "self_declared_cases": {},
+      "verified_cases": {}
+    },
+    "financial": {
+      "liquidity": 0.1,
+      "credit_rating": 0.1,
+      "profitability": 0.05,
+      "registration_age_years": 0.5,
+      "turnover": 20000.0
+    },
+    "technical": {
+      "qualified_employees": 1,
+      "equipment_availability": 0.1,
+      "technology_maturity": 1.0,
+      "relevant_experience_years": 0.5,
+      "declared_assets": []
+    },
+    "beneficial_owners": [
+      "Owner_Cheap"
+    ]
+  },
+  {
+    "bidder_id": "B_fails_threshold",
+    "price": {
+      "bid_amount": 250000.0
+    },
+    "performance": {
+      "records": [
+        {
+          "client_id": "C3",
+          "successful_projects": 1,
+          "failed_projects": 15,
+          "verification_weight": 1.0
+        }
+      ]
+    },
+    "legal": {
+      "self_declared_cases": {},
+      "verified_cases": {}
+    },
+    "financial": {
+      "liquidity": 0.9,
+      "credit_rating": 0.9,
+      "profitability": 0.8,
+      "registration_age_years": 10.0,
+      "turnover": 500000.0
+    },
+    "technical": {
+      "qualified_employees": 80,
+      "equipment_availability": 0.95,
+      "technology_maturity": 9.0,
+      "relevant_experience_years": 15.0,
+      "declared_assets": [
+        "Asset_FailsThreshold_1"
+      ]
+    },
+    "beneficial_owners": [
+      "Owner_FailsThreshold"
+    ]
+  },
+  {
+    "bidder_id": "B_colluder_A",
+    "price": {
+      "bid_amount": 380000.0
+    },
+    "performance": {
+      "records": [
+        {
+          "client_id": "C4",
+          "successful_projects": 20,
+          "failed_projects": 2,
+          "verification_weight": 1.0
+        }
+      ]
+    },
+    "legal": {
+      "self_declared_cases": {},
+      "verified_cases": {}
+    },
+    "financial": {
+      "liquidity": 0.75,
+      "credit_rating": 0.75,
+      "profitability": 0.6,
+      "registration_age_years": 4.0,
+      "turnover": 300000.0
+    },
+    "technical": {
+      "qualified_employees": 30,
+      "equipment_availability": 0.75,
+      "technology_maturity": 5.0,
+      "relevant_experience_years": 6.0,
+      "declared_assets": [
+        "Asset_Colluder_ExclusiveA",
+        "Asset_Shared_Truck_101"
+      ]
+    },
+    "beneficial_owners": [
+      "Owner_Alpha",
+      "Owner_Beta"
+    ]
+  },
+  {
+    "bidder_id": "B_colluder_B",
+    "price": {
+      "bid_amount": 382000.0
+    },
+    "performance": {
+      "records": [
+        {
+          "client_id": "C4",
+          "successful_projects": 20,
+          "failed_projects": 2,
+          "verification_weight": 1.0
+        }
+      ]
+    },
+    "legal": {
+      "self_declared_cases": {},
+      "verified_cases": {}
+    },
+    "financial": {
+      "liquidity": 0.75,
+      "credit_rating": 0.75,
+      "profitability": 0.6,
+      "registration_age_years": 4.0,
+      "turnover": 300000.0
+    },
+    "technical": {
+      "qualified_employees": 30,
+      "equipment_availability": 0.75,
+      "technology_maturity": 5.0,
+      "relevant_experience_years": 6.0,
+      "declared_assets": [
+        "Asset_Colluder_ExclusiveB",
+        "Asset_Shared_Truck_101"
+      ]
+    },
+    "beneficial_owners": [
+      "Owner_Alpha",
+      "Owner_Gamma"
+    ]
+  },
+  {
+    "bidder_id": "B008",
+    "price": {
+      "bid_amount": 559000.0
+    },
+    "performance": {
+      "records": [
+        {
+          "client_id": "Client_B008_0",
+          "successful_projects": 13,
+          "failed_projects": 1,
+          "verification_weight": 0.77
+        }
+      ]
+    },
+    "legal": {
+      "self_declared_cases": {
+        "minor_civil": 0,
+        "tax_violation": 0,
+        "labour_law": 0
+      },
+      "verified_cases": {
+        "minor_civil": 0,
+        "tax_violation": 0,
+        "labour_law": 0
+      }
+    },
+    "financial": {
+      "liquidity": 0.45,
+      "credit_rating": 0.69,
+      "profitability": 0.22,
+      "registration_age_years": 5.2,
+      "turnover": 509000.0
+    },
+    "technical": {
+      "qualified_employees": 13,
+      "equipment_availability": 0.82,
+      "technology_maturity": 9.0,
+      "relevant_experience_years": 9.0,
+      "declared_assets": [
+        "Asset_B008_0",
+        "Asset_B008_1",
+        "Asset_B008_2"
+      ]
+    },
+    "beneficial_owners": [
+      "Owner_B008_1",
+      "Owner_B008_2"
+    ]
+  },
+  {
+    "bidder_id": "B009",
+    "price": {
+      "bid_amount": 458000.0
+    },
+    "performance": {
+      "records": [
+        {
+          "client_id": "Client_B009_0",
+          "successful_projects": 5,
+          "failed_projects": 1,
+          "verification_weight": 0.91
+        },
+        {
+          "client_id": "Client_B009_1",
+          "successful_projects": 15,
+          "failed_projects": 2,
+          "verification_weight": 0.75
+        }
+      ]
+    },
+    "legal": {
+      "self_declared_cases": {
+        "minor_civil": 1,
+        "tax_violation": 0,
+        "labour_law": 0
+      },
+      "verified_cases": {
+        "minor_civil": 1,
+        "tax_violation": 0,
+        "labour_law": 0
+      }
+    },
+    "financial": {
+      "liquidity": 0.45,
+      "credit_rating": 0.88,
+      "profitability": 0.56,
+      "registration_age_years": 12.6,
+      "turnover": 686000.0
+    },
+    "technical": {
+      "qualified_employees": 78,
+      "equipment_availability": 0.65,
+      "technology_maturity": 9.0,
+      "relevant_experience_years": 4.0,
+      "declared_assets": [
+        "Asset_B009_0",
+        "Asset_B009_1",
+        "Asset_B009_2"
+      ]
+    },
+    "beneficial_owners": [
+      "Owner_B009_1",
+      "Owner_B009_2"
+    ]
+  },
+  {
+    "bidder_id": "B010",
+    "price": {
+      "bid_amount": 513000.0
+    },
+    "performance": {
+      "records": [
+        {
+          "client_id": "Client_B010_0",
+          "successful_projects": 16,
+          "failed_projects": 1,
+          "verification_weight": 0.91
+        },
+        {
+          "client_id": "Client_B010_1",
+          "successful_projects": 6,
+          "failed_projects": 1,
+          "verification_weight": 0.93
+        },
+        {
+          "client_id": "Client_B010_2",
+          "successful_projects": 7,
+          "failed_projects": 1,
+          "verification_weight": 0.96
+        }
+      ]
+    },
+    "legal": {
+      "self_declared_cases": {
+        "minor_civil": 0,
+        "tax_violation": 0,
+        "labour_law": 0
+      },
+      "verified_cases": {
+        "minor_civil": 0,
+        "tax_violation": 0,
+        "labour_law": 0
+      }
+    },
+    "financial": {
+      "liquidity": 0.49,
+      "credit_rating": 0.66,
+      "profitability": 0.6,
+      "registration_age_years": 11.3,
+      "turnover": 650000.0
+    },
+    "technical": {
+      "qualified_employees": 19,
+      "equipment_availability": 0.84,
+      "technology_maturity": 5.0,
+      "relevant_experience_years": 19.0,
+      "declared_assets": [
+        "Asset_B010_0",
+        "Asset_B010_1",
+        "Asset_B010_2"
+      ]
+    },
+    "beneficial_owners": [
+      "Owner_B010_1",
+      "Owner_B010_2"
+    ]
+  },
+  {
+    "bidder_id": "B011",
+    "price": {
+      "bid_amount": 606000.0
+    },
+    "performance": {
+      "records": [
+        {
+          "client_id": "Client_B011_0",
+          "successful_projects": 19,
+          "failed_projects": 3,
+          "verification_weight": 0.78
+        }
+      ]
+    },
+    "legal": {
+      "self_declared_cases": {
+        "minor_civil": 1,
+        "tax_violation": 0,
+        "labour_law": 0
+      },
+      "verified_cases": {
+        "minor_civil": 1,
+        "tax_violation": 0,
+        "labour_law": 0
+      }
+    },
+    "financial": {
+      "liquidity": 0.58,
+      "credit_rating": 0.85,
+      "profitability": 0.23,
+      "registration_age_years": 12.8,
+      "turnover": 746000.0
+    },
+    "technical": {
+      "qualified_employees": 61,
+      "equipment_availability": 0.71,
+      "technology_maturity": 6.0,
+      "relevant_experience_years": 20.0,
+      "declared_assets": [
+        "Asset_B011_0",
+        "Asset_B011_1",
+        "Asset_B011_2"
+      ]
+    },
+    "beneficial_owners": [
+      "Owner_B011_1",
+      "Owner_B011_2"
+    ]
+  },
+  {
+    "bidder_id": "B012",
+    "price": {
+      "bid_amount": 684000.0
+    },
+    "performance": {
+      "records": [
+        {
+          "client_id": "Client_B012_0",
+          "successful_projects": 11,
+          "failed_projects": 3,
+          "verification_weight": 0.82
+        },
+        {
+          "client_id": "Client_B012_1",
+          "successful_projects": 19,
+          "failed_projects": 1,
+          "verification_weight": 0.78
+        }
+      ]
+    },
+    "legal": {
+      "self_declared_cases": {
+        "minor_civil": 0,
+        "tax_violation": 0,
+        "labour_law": 0
+      },
+      "verified_cases": {
+        "minor_civil": 0,
+        "tax_violation": 0,
+        "labour_law": 0
+      }
+    },
+    "financial": {
+      "liquidity": 0.72,
+      "credit_rating": 0.9,
+      "profitability": 0.44,
+      "registration_age_years": 5.2,
+      "turnover": 898000.0
+    },
+    "technical": {
+      "qualified_employees": 75,
+      "equipment_availability": 0.8,
+      "technology_maturity": 3.0,
+      "relevant_experience_years": 5.0,
+      "declared_assets": [
+        "Asset_B012_0",
+        "Asset_B012_1",
+        "Asset_B012_2"
+      ]
+    },
+    "beneficial_owners": [
+      "Owner_B012_1",
+      "Owner_B012_2"
+    ]
+  },
+  {
+    "bidder_id": "B013",
+    "price": {
+      "bid_amount": 301000.0
+    },
+    "performance": {
+      "records": [
+        {
+          "client_id": "Client_B013_0",
+          "successful_projects": 18,
+          "failed_projects": 0,
+          "verification_weight": 0.82
+        }
+      ]
+    },
+    "legal": {
+      "self_declared_cases": {
+        "minor_civil": 0,
+        "tax_violation": 0,
+        "labour_law": 0
+      },
+      "verified_cases": {
+        "minor_civil": 0,
+        "tax_violation": 0,
+        "labour_law": 0
+      }
+    },
+    "financial": {
+      "liquidity": 0.7,
+      "credit_rating": 0.92,
+      "profitability": 0.61,
+      "registration_age_years": 3.9,
+      "turnover": 809000.0
+    },
+    "technical": {
+      "qualified_employees": 44,
+      "equipment_availability": 0.91,
+      "technology_maturity": 8.0,
+      "relevant_experience_years": 5.0,
+      "declared_assets": [
+        "Asset_B013_0",
+        "Asset_B013_1",
+        "Asset_B013_2"
+      ]
+    },
+    "beneficial_owners": [
+      "Owner_B013_1",
+      "Owner_B013_2"
+    ]
+  },
+  {
+    "bidder_id": "B014",
+    "price": {
+      "bid_amount": 376000.0
+    },
+    "performance": {
+      "records": [
+        {
+          "client_id": "Client_B014_0",
+          "successful_projects": 19,
+          "failed_projects": 0,
+          "verification_weight": 0.99
+        }
+      ]
+    },
+    "legal": {
+      "self_declared_cases": {
+        "minor_civil": 1,
+        "tax_violation": 0,
+        "labour_law": 0
+      },
+      "verified_cases": {
+        "minor_civil": 1,
+        "tax_violation": 0,
+        "labour_law": 0
+      }
+    },
+    "financial": {
+      "liquidity": 0.5,
+      "credit_rating": 0.91,
+      "profitability": 0.72,
+      "registration_age_years": 6.2,
+      "turnover": 615000.0
+    },
+    "technical": {
+      "qualified_employees": 87,
+      "equipment_availability": 0.68,
+      "technology_maturity": 8.0,
+      "relevant_experience_years": 7.0,
+      "declared_assets": [
+        "Asset_B014_0",
+        "Asset_B014_1",
+        "Asset_B014_2"
+      ]
+    },
+    "beneficial_owners": [
+      "Owner_B014_1",
+      "Owner_B014_2"
+    ]
+  },
+  {
+    "bidder_id": "B015",
+    "price": {
+      "bid_amount": 506000.0
+    },
+    "performance": {
+      "records": [
+        {
+          "client_id": "Client_B015_0",
+          "successful_projects": 5,
+          "failed_projects": 2,
+          "verification_weight": 0.85
+        },
+        {
+          "client_id": "Client_B015_1",
+          "successful_projects": 8,
+          "failed_projects": 2,
+          "verification_weight": 0.96
+        },
+        {
+          "client_id": "Client_B015_2",
+          "successful_projects": 14,
+          "failed_projects": 1,
+          "verification_weight": 0.72
+        }
+      ]
+    },
+    "legal": {
+      "self_declared_cases": {
+        "minor_civil": 1,
+        "tax_violation": 1,
+        "labour_law": 0
+      },
+      "verified_cases": {
+        "minor_civil": 1,
+        "tax_violation": 1,
+        "labour_law": 0
+      }
+    },
+    "financial": {
+      "liquidity": 0.67,
+      "credit_rating": 0.53,
+      "profitability": 0.66,
+      "registration_age_years": 12.1,
+      "turnover": 211000.0
+    },
+    "technical": {
+      "qualified_employees": 70,
+      "equipment_availability": 0.98,
+      "technology_maturity": 5.0,
+      "relevant_experience_years": 10.0,
+      "declared_assets": [
+        "Asset_B015_0",
+        "Asset_B015_1",
+        "Asset_B015_2"
+      ]
+    },
+    "beneficial_owners": [
+      "Owner_B015_1",
+      "Owner_B015_2"
+    ]
+  },
+  {
+    "bidder_id": "B016",
+    "price": {
+      "bid_amount": 500000.0
+    },
+    "performance": {
+      "records": [
+        {
+          "client_id": "Client_B016_0",
+          "successful_projects": 18,
+          "failed_projects": 1,
+          "verification_weight": 0.98
+        },
+        {
+          "client_id": "Client_B016_1",
+          "successful_projects": 11,
+          "failed_projects": 2,
+          "verification_weight": 0.82
+        },
+        {
+          "client_id": "Client_B016_2",
+          "successful_projects": 16,
+          "failed_projects": 3,
+          "verification_weight": 0.97
+        }
+      ]
+    },
+    "legal": {
+      "self_declared_cases": {
+        "minor_civil": 0,
+        "tax_violation": 0,
+        "labour_law": 0
+      },
+      "verified_cases": {
+        "minor_civil": 0,
+        "tax_violation": 0,
+        "labour_law": 0
+      }
+    },
+    "financial": {
+      "liquidity": 0.41,
+      "credit_rating": 0.75,
+      "profitability": 0.55,
+      "registration_age_years": 2.6,
+      "turnover": 669000.0
+    },
+    "technical": {
+      "qualified_employees": 17,
+      "equipment_availability": 0.69,
+      "technology_maturity": 3.0,
+      "relevant_experience_years": 12.0,
+      "declared_assets": [
+        "Asset_B016_0",
+        "Asset_B016_1",
+        "Asset_B016_2"
+      ]
+    },
+    "beneficial_owners": [
+      "Owner_B016_1",
+      "Owner_B016_2"
+    ]
+  },
+  {
+    "bidder_id": "B017",
+    "price": {
+      "bid_amount": 258000.0
+    },
+    "performance": {
+      "records": [
+        {
+          "client_id": "Client_B017_0",
+          "successful_projects": 13,
+          "failed_projects": 3,
+          "verification_weight": 0.76
+        }
+      ]
+    },
+    "legal": {
+      "self_declared_cases": {
+        "minor_civil": 0,
+        "tax_violation": 1,
+        "labour_law": 0
+      },
+      "verified_cases": {
+        "minor_civil": 0,
+        "tax_violation": 1,
+        "labour_law": 0
+      }
+    },
+    "financial": {
+      "liquidity": 0.66,
+      "credit_rating": 0.85,
+      "profitability": 0.68,
+      "registration_age_years": 4.9,
+      "turnover": 187000.0
+    },
+    "technical": {
+      "qualified_employees": 65,
+      "equipment_availability": 0.74,
+      "technology_maturity": 9.0,
+      "relevant_experience_years": 16.0,
+      "declared_assets": [
+        "Asset_B017_0",
+        "Asset_B017_1",
+        "Asset_B017_2"
+      ]
+    },
+    "beneficial_owners": [
+      "Owner_B017_1",
+      "Owner_B017_2"
+    ]
+  },
+  {
+    "bidder_id": "B018",
+    "price": {
+      "bid_amount": 678000.0
+    },
+    "performance": {
+      "records": [
+        {
+          "client_id": "Client_B018_0",
+          "successful_projects": 8,
+          "failed_projects": 0,
+          "verification_weight": 0.82
+        }
+      ]
+    },
+    "legal": {
+      "self_declared_cases": {
+        "minor_civil": 0,
+        "tax_violation": 0,
+        "labour_law": 0
+      },
+      "verified_cases": {
+        "minor_civil": 0,
+        "tax_violation": 0,
+        "labour_law": 0
+      }
+    },
+    "financial": {
+      "liquidity": 0.5,
+      "credit_rating": 0.7,
+      "profitability": 0.45,
+      "registration_age_years": 6.0,
+      "turnover": 307000.0
+    },
+    "technical": {
+      "qualified_employees": 19,
+      "equipment_availability": 0.78,
+      "technology_maturity": 4.0,
+      "relevant_experience_years": 3.0,
+      "declared_assets": [
+        "Asset_B018_0",
+        "Asset_B018_1",
+        "Asset_B018_2"
+      ]
+    },
+    "beneficial_owners": [
+      "Owner_B018_1",
+      "Owner_B018_2"
+    ]
+  },
+  {
+    "bidder_id": "B019",
+    "price": {
+      "bid_amount": 566000.0
+    },
+    "performance": {
+      "records": [
+        {
+          "client_id": "Client_B019_0",
+          "successful_projects": 5,
+          "failed_projects": 0,
+          "verification_weight": 0.98
+        },
+        {
+          "client_id": "Client_B019_1",
+          "successful_projects": 12,
+          "failed_projects": 1,
+          "verification_weight": 0.82
+        },
+        {
+          "client_id": "Client_B019_2",
+          "successful_projects": 20,
+          "failed_projects": 1,
+          "verification_weight": 0.96
+        }
+      ]
+    },
+    "legal": {
+      "self_declared_cases": {
+        "minor_civil": 1,
+        "tax_violation": 0,
+        "labour_law": 0
+      },
+      "verified_cases": {
+        "minor_civil": 1,
+        "tax_violation": 0,
+        "labour_law": 0
+      }
+    },
+    "financial": {
+      "liquidity": 0.61,
+      "credit_rating": 0.92,
+      "profitability": 0.67,
+      "registration_age_years": 6.1,
+      "turnover": 660000.0
+    },
+    "technical": {
+      "qualified_employees": 81,
+      "equipment_availability": 0.86,
+      "technology_maturity": 10.0,
+      "relevant_experience_years": 6.0,
+      "declared_assets": [
+        "Asset_B019_0",
+        "Asset_B019_1",
+        "Asset_B019_2"
+      ]
+    },
+    "beneficial_owners": [
+      "Owner_B019_1",
+      "Owner_B019_2"
+    ]
+  },
+  {
+    "bidder_id": "B020",
+    "price": {
+      "bid_amount": 321000.0
+    },
+    "performance": {
+      "records": [
+        {
+          "client_id": "Client_B020_0",
+          "successful_projects": 6,
+          "failed_projects": 0,
+          "verification_weight": 0.92
+        }
+      ]
+    },
+    "legal": {
+      "self_declared_cases": {
+        "minor_civil": 0,
+        "tax_violation": 0,
+        "labour_law": 0
+      },
+      "verified_cases": {
+        "minor_civil": 0,
+        "tax_violation": 0,
+        "labour_law": 0
+      }
+    },
+    "financial": {
+      "liquidity": 0.87,
+      "credit_rating": 0.57,
+      "profitability": 0.78,
+      "registration_age_years": 3.5,
+      "turnover": 257000.0
+    },
+    "technical": {
+      "qualified_employees": 86,
+      "equipment_availability": 0.63,
+      "technology_maturity": 6.0,
+      "relevant_experience_years": 14.0,
+      "declared_assets": [
+        "Asset_B020_0",
+        "Asset_B020_1",
+        "Asset_B020_2"
+      ]
+    },
+    "beneficial_owners": [
+      "Owner_B020_1",
+      "Owner_B020_2"
+    ]
+  }
+]

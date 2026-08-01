@@ -1,0 +1,582 @@
+[
+  {
+    "bidder_id": "B_brand_new",
+    "price": {
+      "bid_amount": 400000.0
+    },
+    "performance": {
+      "successful_projects": 0,
+      "failed_projects": 0
+    },
+    "legal": {
+      "minor_civil": 0,
+      "tax_violation": 0,
+      "labour_law": 0,
+      "environmental": 0,
+      "blacklisting": 0,
+      "corruption_fraud": 0
+    },
+    "financial": {
+      "liquidity": 0.7,
+      "credit_rating": 0.7,
+      "profitability": 0.5
+    },
+    "technical": {
+      "qualified_employees": 15,
+      "equipment_availability": 0.6,
+      "technology_maturity": 3.0,
+      "relevant_experience_years": 1.0
+    }
+  },
+  {
+    "bidder_id": "B_legal_test",
+    "price": {
+      "bid_amount": 450000.0
+    },
+    "performance": {
+      "successful_projects": 15,
+      "failed_projects": 1
+    },
+    "legal": {
+      "minor_civil": 2,
+      "tax_violation": 1,
+      "labour_law": 0,
+      "environmental": 0,
+      "blacklisting": 0,
+      "corruption_fraud": 0
+    },
+    "financial": {
+      "liquidity": 0.8,
+      "credit_rating": 0.8,
+      "profitability": 0.6
+    },
+    "technical": {
+      "qualified_employees": 25,
+      "equipment_availability": 0.8,
+      "technology_maturity": 6.0,
+      "relevant_experience_years": 8.0
+    }
+  },
+  {
+    "bidder_id": "B_cheap_but_weak",
+    "price": {
+      "bid_amount": 150000.0
+    },
+    "performance": {
+      "successful_projects": 10,
+      "failed_projects": 2
+    },
+    "legal": {
+      "minor_civil": 0,
+      "tax_violation": 0,
+      "labour_law": 0,
+      "environmental": 0,
+      "blacklisting": 0,
+      "corruption_fraud": 0
+    },
+    "financial": {
+      "liquidity": 0.1,
+      "credit_rating": 0.1,
+      "profitability": 0.05
+    },
+    "technical": {
+      "qualified_employees": 1,
+      "equipment_availability": 0.1,
+      "technology_maturity": 1.0,
+      "relevant_experience_years": 0.5
+    }
+  },
+  {
+    "bidder_id": "B_fails_threshold",
+    "price": {
+      "bid_amount": 250000.0
+    },
+    "performance": {
+      "successful_projects": 1,
+      "failed_projects": 15
+    },
+    "legal": {
+      "minor_civil": 0,
+      "tax_violation": 0,
+      "labour_law": 0,
+      "environmental": 0,
+      "blacklisting": 0,
+      "corruption_fraud": 0
+    },
+    "financial": {
+      "liquidity": 0.9,
+      "credit_rating": 0.9,
+      "profitability": 0.8
+    },
+    "technical": {
+      "qualified_employees": 80,
+      "equipment_availability": 0.95,
+      "technology_maturity": 9.0,
+      "relevant_experience_years": 15.0
+    }
+  },
+  {
+    "bidder_id": "B005",
+    "price": {
+      "bid_amount": 559000.0
+    },
+    "performance": {
+      "successful_projects": 6,
+      "failed_projects": 5
+    },
+    "legal": {
+      "minor_civil": 0,
+      "tax_violation": 0,
+      "labour_law": 0,
+      "environmental": 0,
+      "blacklisting": 0,
+      "corruption_fraud": 0
+    },
+    "financial": {
+      "liquidity": 0.89,
+      "credit_rating": 0.54,
+      "profitability": 0.45
+    },
+    "technical": {
+      "qualified_employees": 13,
+      "equipment_availability": 0.64,
+      "technology_maturity": 6.0,
+      "relevant_experience_years": 18.0
+    }
+  },
+  {
+    "bidder_id": "B006",
+    "price": {
+      "bid_amount": 539000.0
+    },
+    "performance": {
+      "successful_projects": 40,
+      "failed_projects": 1
+    },
+    "legal": {
+      "minor_civil": 0,
+      "tax_violation": 0,
+      "labour_law": 0,
+      "environmental": 0,
+      "blacklisting": 0,
+      "corruption_fraud": 0
+    },
+    "financial": {
+      "liquidity": 0.55,
+      "credit_rating": 0.89,
+      "profitability": 0.66
+    },
+    "technical": {
+      "qualified_employees": 30,
+      "equipment_availability": 0.88,
+      "technology_maturity": 8.0,
+      "relevant_experience_years": 10.0
+    }
+  },
+  {
+    "bidder_id": "B007",
+    "price": {
+      "bid_amount": 302000.0
+    },
+    "performance": {
+      "successful_projects": 26,
+      "failed_projects": 0
+    },
+    "legal": {
+      "minor_civil": 0,
+      "tax_violation": 0,
+      "labour_law": 0,
+      "environmental": 0,
+      "blacklisting": 0,
+      "corruption_fraud": 0
+    },
+    "financial": {
+      "liquidity": 0.84,
+      "credit_rating": 0.83,
+      "profitability": 0.52
+    },
+    "technical": {
+      "qualified_employees": 58,
+      "equipment_availability": 0.63,
+      "technology_maturity": 7.0,
+      "relevant_experience_years": 13.0
+    }
+  },
+  {
+    "bidder_id": "B008",
+    "price": {
+      "bid_amount": 526000.0
+    },
+    "performance": {
+      "successful_projects": 50,
+      "failed_projects": 0
+    },
+    "legal": {
+      "minor_civil": 0,
+      "tax_violation": 0,
+      "labour_law": 0,
+      "environmental": 0,
+      "blacklisting": 0,
+      "corruption_fraud": 0
+    },
+    "financial": {
+      "liquidity": 0.53,
+      "credit_rating": 0.55,
+      "profitability": 0.37
+    },
+    "technical": {
+      "qualified_employees": 91,
+      "equipment_availability": 0.93,
+      "technology_maturity": 5.0,
+      "relevant_experience_years": 13.0
+    }
+  },
+  {
+    "bidder_id": "B009",
+    "price": {
+      "bid_amount": 408000.0
+    },
+    "performance": {
+      "successful_projects": 47,
+      "failed_projects": 2
+    },
+    "legal": {
+      "minor_civil": 0,
+      "tax_violation": 0,
+      "labour_law": 0,
+      "environmental": 0,
+      "blacklisting": 0,
+      "corruption_fraud": 0
+    },
+    "financial": {
+      "liquidity": 0.69,
+      "credit_rating": 0.61,
+      "profitability": 0.48
+    },
+    "technical": {
+      "qualified_employees": 44,
+      "equipment_availability": 1.0,
+      "technology_maturity": 6.0,
+      "relevant_experience_years": 12.0
+    }
+  },
+  {
+    "bidder_id": "B010",
+    "price": {
+      "bid_amount": 667000.0
+    },
+    "performance": {
+      "successful_projects": 8,
+      "failed_projects": 1
+    },
+    "legal": {
+      "minor_civil": 1,
+      "tax_violation": 0,
+      "labour_law": 0,
+      "environmental": 0,
+      "blacklisting": 0,
+      "corruption_fraud": 0
+    },
+    "financial": {
+      "liquidity": 0.9,
+      "credit_rating": 0.76,
+      "profitability": 0.63
+    },
+    "technical": {
+      "qualified_employees": 37,
+      "equipment_availability": 0.86,
+      "technology_maturity": 9.0,
+      "relevant_experience_years": 16.0
+    }
+  },
+  {
+    "bidder_id": "B011",
+    "price": {
+      "bid_amount": 296000.0
+    },
+    "performance": {
+      "successful_projects": 13,
+      "failed_projects": 1
+    },
+    "legal": {
+      "minor_civil": 0,
+      "tax_violation": 0,
+      "labour_law": 0,
+      "environmental": 0,
+      "blacklisting": 0,
+      "corruption_fraud": 0
+    },
+    "financial": {
+      "liquidity": 0.72,
+      "credit_rating": 0.66,
+      "profitability": 0.8
+    },
+    "technical": {
+      "qualified_employees": 27,
+      "equipment_availability": 0.8,
+      "technology_maturity": 4.0,
+      "relevant_experience_years": 3.0
+    }
+  },
+  {
+    "bidder_id": "B012",
+    "price": {
+      "bid_amount": 676000.0
+    },
+    "performance": {
+      "successful_projects": 14,
+      "failed_projects": 5
+    },
+    "legal": {
+      "minor_civil": 0,
+      "tax_violation": 0,
+      "labour_law": 0,
+      "environmental": 0,
+      "blacklisting": 0,
+      "corruption_fraud": 0
+    },
+    "financial": {
+      "liquidity": 0.73,
+      "credit_rating": 0.71,
+      "profitability": 0.35
+    },
+    "technical": {
+      "qualified_employees": 80,
+      "equipment_availability": 0.94,
+      "technology_maturity": 3.0,
+      "relevant_experience_years": 5.0
+    }
+  },
+  {
+    "bidder_id": "B013",
+    "price": {
+      "bid_amount": 581000.0
+    },
+    "performance": {
+      "successful_projects": 39,
+      "failed_projects": 2
+    },
+    "legal": {
+      "minor_civil": 0,
+      "tax_violation": 0,
+      "labour_law": 0,
+      "environmental": 0,
+      "blacklisting": 0,
+      "corruption_fraud": 0
+    },
+    "financial": {
+      "liquidity": 0.4,
+      "credit_rating": 0.82,
+      "profitability": 0.63
+    },
+    "technical": {
+      "qualified_employees": 74,
+      "equipment_availability": 0.9,
+      "technology_maturity": 4.0,
+      "relevant_experience_years": 11.0
+    }
+  },
+  {
+    "bidder_id": "B014",
+    "price": {
+      "bid_amount": 666000.0
+    },
+    "performance": {
+      "successful_projects": 37,
+      "failed_projects": 4
+    },
+    "legal": {
+      "minor_civil": 0,
+      "tax_violation": 0,
+      "labour_law": 0,
+      "environmental": 0,
+      "blacklisting": 0,
+      "corruption_fraud": 0
+    },
+    "financial": {
+      "liquidity": 0.91,
+      "credit_rating": 0.91,
+      "profitability": 0.56
+    },
+    "technical": {
+      "qualified_employees": 72,
+      "equipment_availability": 0.61,
+      "technology_maturity": 8.0,
+      "relevant_experience_years": 11.0
+    }
+  },
+  {
+    "bidder_id": "B015",
+    "price": {
+      "bid_amount": 347000.0
+    },
+    "performance": {
+      "successful_projects": 20,
+      "failed_projects": 4
+    },
+    "legal": {
+      "minor_civil": 1,
+      "tax_violation": 0,
+      "labour_law": 0,
+      "environmental": 0,
+      "blacklisting": 0,
+      "corruption_fraud": 0
+    },
+    "financial": {
+      "liquidity": 0.82,
+      "credit_rating": 0.84,
+      "profitability": 0.28
+    },
+    "technical": {
+      "qualified_employees": 70,
+      "equipment_availability": 0.98,
+      "technology_maturity": 5.0,
+      "relevant_experience_years": 10.0
+    }
+  },
+  {
+    "bidder_id": "B016",
+    "price": {
+      "bid_amount": 500000.0
+    },
+    "performance": {
+      "successful_projects": 43,
+      "failed_projects": 3
+    },
+    "legal": {
+      "minor_civil": 2,
+      "tax_violation": 1,
+      "labour_law": 0,
+      "environmental": 0,
+      "blacklisting": 0,
+      "corruption_fraud": 0
+    },
+    "financial": {
+      "liquidity": 0.79,
+      "credit_rating": 0.68,
+      "profitability": 0.6
+    },
+    "technical": {
+      "qualified_employees": 57,
+      "equipment_availability": 0.78,
+      "technology_maturity": 10.0,
+      "relevant_experience_years": 5.0
+    }
+  },
+  {
+    "bidder_id": "B017",
+    "price": {
+      "bid_amount": 351000.0
+    },
+    "performance": {
+      "successful_projects": 9,
+      "failed_projects": 2
+    },
+    "legal": {
+      "minor_civil": 0,
+      "tax_violation": 0,
+      "labour_law": 0,
+      "environmental": 0,
+      "blacklisting": 0,
+      "corruption_fraud": 0
+    },
+    "financial": {
+      "liquidity": 0.79,
+      "credit_rating": 0.53,
+      "profitability": 0.24
+    },
+    "technical": {
+      "qualified_employees": 14,
+      "equipment_availability": 0.94,
+      "technology_maturity": 4.0,
+      "relevant_experience_years": 18.0
+    }
+  },
+  {
+    "bidder_id": "B018",
+    "price": {
+      "bid_amount": 346000.0
+    },
+    "performance": {
+      "successful_projects": 47,
+      "failed_projects": 3
+    },
+    "legal": {
+      "minor_civil": 0,
+      "tax_violation": 0,
+      "labour_law": 0,
+      "environmental": 0,
+      "blacklisting": 0,
+      "corruption_fraud": 0
+    },
+    "financial": {
+      "liquidity": 0.66,
+      "credit_rating": 0.85,
+      "profitability": 0.68
+    },
+    "technical": {
+      "qualified_employees": 34,
+      "equipment_availability": 0.64,
+      "technology_maturity": 9.0,
+      "relevant_experience_years": 13.0
+    }
+  },
+  {
+    "bidder_id": "B019",
+    "price": {
+      "bid_amount": 444000.0
+    },
+    "performance": {
+      "successful_projects": 34,
+      "failed_projects": 5
+    },
+    "legal": {
+      "minor_civil": 0,
+      "tax_violation": 0,
+      "labour_law": 0,
+      "environmental": 0,
+      "blacklisting": 0,
+      "corruption_fraud": 0
+    },
+    "financial": {
+      "liquidity": 0.8,
+      "credit_rating": 0.86,
+      "profitability": 0.27
+    },
+    "technical": {
+      "qualified_employees": 34,
+      "equipment_availability": 0.68,
+      "technology_maturity": 10.0,
+      "relevant_experience_years": 6.0
+    }
+  },
+  {
+    "bidder_id": "B020",
+    "price": {
+      "bid_amount": 444000.0
+    },
+    "performance": {
+      "successful_projects": 22,
+      "failed_projects": 3
+    },
+    "legal": {
+      "minor_civil": 0,
+      "tax_violation": 1,
+      "labour_law": 0,
+      "environmental": 0,
+      "blacklisting": 0,
+      "corruption_fraud": 0
+    },
+    "financial": {
+      "liquidity": 0.7,
+      "credit_rating": 0.52,
+      "profitability": 0.8
+    },
+    "technical": {
+      "qualified_employees": 11,
+      "equipment_availability": 0.99,
+      "technology_maturity": 6.0,
+      "relevant_experience_years": 7.0
+    }
+  }
+]
