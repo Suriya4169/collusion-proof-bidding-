@@ -1,0 +1,73 @@
+\documentclass[border=20pt, tikz]{standalone}
+\usepackage{helvet}
+\renewcommand{\familydefault}{\sfdefault}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, calc, shadows, backgrounds}
+
+\tikzset{
+    % Node styles
+    terminal/.style={draw=gray!70!black, fill=white, double=gray!10, double distance=1pt, rounded corners=8pt, text width=7.5em, text centered, minimum height=3em, thick, font=\sffamily\bfseries, drop shadow={opacity=0.12, shadow xshift=1.5pt, shadow yshift=-1.5pt}},
+    client/.style={draw=teal!70!black, fill=teal!5, rounded corners=4pt, text width=13.5em, text centered, minimum height=3.5em, thick, font=\sffamily, drop shadow={opacity=0.12, shadow xshift=2pt, shadow yshift=-2pt}},
+    gateway/.style={draw=indigo!70!black, fill=indigo!5, rounded corners=4pt, text width=13.5em, text centered, minimum height=3.5em, thick, font=\sffamily, drop shadow={opacity=0.12, shadow xshift=2pt, shadow yshift=-2pt}},
+    agent/.style={draw=cyan!70!black, fill=cyan!5, rounded corners=4pt, text width=12.5em, text centered, minimum height=4em, thick, font=\sffamily, drop shadow={opacity=0.1, shadow xshift=1.5pt, shadow yshift=-1.5pt}},
+    decision/.style={draw=orange!70!black, fill=orange!5, diamond, aspect=2.2, text width=9.5em, text centered, minimum height=3em, thick, font=\sffamily, drop shadow={opacity=0.12, shadow xshift=2pt, shadow yshift=-2pt}},
+    process/.style={draw=green!70!black, fill=green!5, rounded corners=4pt, text width=13.5em, text centered, minimum height=3.5em, thick, font=\sffamily, drop shadow={opacity=0.12, shadow xshift=2pt, shadow yshift=-2pt}},
+    fail/.style={draw=red!70!black, fill=red!5, rounded corners=4pt, text width=10.5em, text centered, minimum height=3.5em, thick, font=\sffamily\bfseries\color{red!80!black}, drop shadow={opacity=0.12, shadow xshift=2pt, shadow yshift=-2pt}},
+    % Connections
+    arrow/.style={draw=gray!80!black, thick, -{Stealth[scale=1.3]}},
+    labeltext/.style={font=\sffamily\scriptsize\bfseries\color{gray!80!black}}
+}
+
+\begin{document}
+\begin{tikzpicture}[node distance=1.5cm, auto]
+
+% Nodes in sequential flow
+\node (start) [terminal] {START};
+\node (login) [client, below=of start] {\textbf{Screen 1: Login / Register} \\ Enter Udyam / GSTIN};
+\node (fetch) [process, below=of login] {Auto-fetch Company Profile \\ (Directors, Addresses)};
+\node (market) [client, below=of fetch] {\textbf{Screen 2: Tender Marketplace} \\ Browse and select open tenders};
+\node (upload) [client, below=of market] {\textbf{Screen 3: AI Copilot Upload} \\ Upload 100-page Tender PDF};
+\node (nlp) [agent, below=of upload] {\textbf{NLP Agent Rules Extract} \\ Identifies EMD, deadline, and turnover requirements};
+\node (submit_docs) [client, below=of nlp] {\textbf{Screen 4: Doc Submission} \\ Upload bank statements \& certificates};
+\node (fin) [agent, below=of submit_docs] {\textbf{FinTech solvency assessment} \\ Extracts solvency ratios and EMD liquidity check};
+
+\node (liquidity) [decision, below=of fin] {Liquidity \\ Sufficient?};
+\node (warn) [fail, right=2cm of liquidity] {Warn MSME / Save Time \\ (High Risk Alert flagged)};
+
+\node (final_submit) [client, below=1.8cm of liquidity] {\textbf{Screen 5: Final Submission} \\ Enter bid declarations and sign};
+\node (cyber) [gateway, below=of final_submit] {\textbf{Cybersecurity Agent} \\ Captures keystroke dynamics, fingerprint, and IP};
+\node (success) [process, below=of cyber, fill=green!15] {\textbf{Submission Success Page} \\ Bid submitted safely};
+\node (end) [terminal, below=of success] {END};
+
+% Connections
+\draw [arrow] (start) -- (login);
+\draw [arrow] (login) -- (fetch);
+\draw [arrow] (fetch) -- (market);
+\draw [arrow] (market) -- (upload);
+\draw [arrow] (upload) -- (nlp);
+\draw [arrow] (nlp) -- (submit_docs);
+\draw [arrow] (submit_docs) -- (fin);
+\draw [arrow] (fin) -- (liquidity);
+
+\draw [arrow] (liquidity) -- node [labeltext, yshift=6pt] {NO} (warn);
+\draw [arrow] (liquidity) -- node [labeltext, xshift=10pt] {YES} (final_submit);
+
+\draw [arrow] (final_submit) -- (cyber);
+\draw [arrow] (cyber) -- (success);
+\draw [arrow] (success) -- (end);
+
+% Warning flow terminates or returns
+\draw [arrow] (warn.east) -- ++(1.2,0) |- (end.east);
+
+% Container backgrounds
+\begin{scope}[on background layer]
+    \node[draw=teal!30, fill=teal!2, dashed, rounded corners=8pt, inner sep=1.2em, 
+          fit=(login) (fetch) (market) (upload) (submit_docs) (final_submit) (success), 
+          label={[text=teal!80!black, font=\sffamily\bfseries\small]above:MSME USER PORTAL SCREENS}] (screens_group) {};
+
+    \node[draw=cyan!30, fill=cyan!2, dashed, rounded corners=8pt, inner sep=1.2em, 
+          fit=(nlp) (fin) (liquidity) (warn) (cyber), 
+          label={[text=cyan!80!black, font=\sffamily\bfseries\small]above:AI COPILOT VERIFICATION ENGINES}] (ai_group) {};
+\end{scope}
+
+\end{tikzpicture}
+\end{document}
