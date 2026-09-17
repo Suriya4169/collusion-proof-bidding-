@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic
+PyMuPDF==1.24.1
+langchain
+langchain-chroma
+langchain-google-genai
+chromadb
+python-dotenv==1.0.1
+sentence-transformers==2.6.1
+nltk==3.8.1
+rank-bm25==0.2.2
