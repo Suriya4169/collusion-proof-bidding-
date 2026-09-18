@@ -64,10 +64,14 @@ class TenderRequirements(EnhancedBaseModel):
         description="The page number in the PDF where the experience requirement was found. 0 if unknown."
     )
     required_certifications: List[str] = Field(
-        description="A list of strict certifications required (e.g. ['ISO 9001', 'Udyam', 'Startup India']). Return empty list if none."
+        description="Extract a comprehensive list of ALL government documents, certifications, licenses, or authorization letters (e.g., 'OEM Authorization', 'ISO', 'PAN', 'Local Content Certificate') mentioned in the text. Put ALL documents here, even if they say 'if applicable'."
     )
     is_msme_exempted: bool = Field(
         description="True if the document states MSMEs/Startups are exempted from EMD or turnover criteria, False otherwise."
+    )
+    additional_parameters: List[str] = Field(
+        default_factory=list,
+        description="Extract ANY other mandatory rules or constraints (e.g., location, employee count, technical specs). EXCLUDE any certificates or government documents, as those belong strictly in required_certifications."
     )
 
 
@@ -96,6 +100,7 @@ class RuleStatus(str, Enum):
     PASS = "PASS"
     FAIL = "FAIL"
     EXEMPTED = "EXEMPTED"
+    INFO = "INFO"
 
 
 class RuleVerification(EnhancedBaseModel):
@@ -147,9 +152,9 @@ class VerificationReport(EnhancedBaseModel):
         default="",
         description="A plain-language English summary of the eligibility result."
     )
-    hindi_summary: str = Field(
+    regional_summary: str = Field(
         default="",
-        description="The same summary translated into simple, actionable Hindi."
+        description="The same summary translated into the user's preferred regional language."
     )
 
     # Recommended Government Schemes (Agent 1.9)

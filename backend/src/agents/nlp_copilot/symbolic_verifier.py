@@ -246,6 +246,21 @@ def verify_eligibility(
         else:
             reasoning.append("✅ No special certifications required.")
 
+    # ─── 4.5 ADDITIONAL PARAMETERS (Informational) ───
+    if hasattr(rules, "additional_parameters") and rules.additional_parameters:
+        for param in rules.additional_parameters:
+            checks.append(RuleVerification(
+                rule_name="Additional Requirement",
+                status=RuleStatus.INFO,
+                required_value=param,
+                actual_value="Requires Manual Check",
+                distance_pct=0.0,
+                confidence=1.0,
+                source_page=0,
+                message=f"Please manually verify that you meet this requirement: {param}"
+            ))
+            reasoning.append(f"ℹ️ Additional Rule: {param} (Manual verification required)")
+
     # ─── 5. CALCULATE OVERALL COMPLIANCE DISTANCE (OCD) ───
     ocd = _calculate_ocd(checks)
 

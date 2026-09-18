@@ -9,7 +9,7 @@ from src.agents.nlp_copilot.pdf_extractor import extract_text_from_pdf
 from src.agents.nlp_copilot.rag_retriever import chunk_text, build_hybrid_retriever, retrieve_relevant_chunks
 from src.agents.nlp_copilot.neural_extractor import extract_rules_with_gemini
 from src.agents.nlp_copilot.symbolic_verifier import verify_eligibility, MSMEProfile
-from src.agents.nlp_copilot.tender_simplifier import generate_plain_summary, simplify_to_hindi
+from src.agents.nlp_copilot.tender_simplifier import generate_plain_summary, translate_summary
 from src.agents.nlp_copilot.scheme_discoverer import discover_schemes
 from src.agents.nlp_copilot.payment_tracker import calculate_payment_penalty
 from src.models.schemas import VerificationReport, PaymentPenaltyReport, APIErrorResponse
@@ -23,7 +23,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 @router.post(
     "/tender/analyze",
     response_model=VerificationReport,
-    tags=["Tender Intelligence (Agent 1)"],
+    tags=["1. Tender Intelligence Copilot"],
     summary="Run Neurosymbolic Copilot Pipeline",
     description="Accepts a Tender PDF and MSME Profile. Runs a massive 9-agent pipeline to mathematically determine eligibility, calculate CDS scores, translate to Hindi, and recommend government schemes.",
     responses={
@@ -37,7 +37,8 @@ async def analyze_tender(
     turnover: int = Form(4850000),
     experience: int = Form(5),
     certifications: str = Form("Udyam"),
-    is_msme: bool = Form(True)
+    is_msme: bool = Form(True),
+    target_language: str = Form("Hindi", description="The regional language to translate the summary into (e.g. Hindi, Tamil, Marathi).")
 ):
     """
     Core API Endpoint: Runs Sub-Agents 1.1 through 1.9.
@@ -56,7 +57,7 @@ async def analyze_tender(
             turnover_inr=turnover,
             experience_years=experience,
             certifications=cert_list,
-            is_msme_registered=is_msme
+            is_registered_msme=is_msme
         )
 
         # 3. Agent Pipeline
@@ -77,7 +78,7 @@ async def analyze_tender(
         
         # Sub-Agent 1.7
         report.plain_summary = generate_plain_summary(report)
-        report.hindi_summary = simplify_to_hindi(report)
+        report.regional_summary = translate_summary(report, target_language=target_language)
         
         # Sub-Agent 1.9
         report.recommended_schemes = discover_schemes(report)
@@ -101,7 +102,7 @@ class PaymentTrackRequest(BaseModel):
 @router.post(
     "/payments/track",
     response_model=PaymentPenaltyReport,
-    tags=["Financial & Legal (Agent 1)"],
+    tags=["2. Financial & Legal Trackers"],
     summary="Calculate Section 16 Payment Penalty",
     description="Takes an invoice date and payment date to strictly calculate the compounding MSME Act interest penalty (3x RBI rate) and draft a legal demand notice.",
     responses={

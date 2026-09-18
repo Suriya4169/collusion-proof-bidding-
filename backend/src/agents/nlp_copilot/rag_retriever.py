@@ -2,7 +2,7 @@ import os
 from typing import List
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 
 def chunk_text(text: str) -> List[str]:
     """
@@ -22,9 +22,10 @@ def build_hybrid_retriever(chunks: List[str]):
     """
     Builds the Retriever (Using Pure Semantic for now due to Langchain v0.3 bug)
     """
-    embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
+    # 🚀 HuggingFace Local Embeddings (Zero Cost, Zero Rate Limits, Runs on CPU)
+    embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
     vectorstore = Chroma.from_texts(texts=chunks, embedding=embeddings)
-    return vectorstore.as_retriever(search_kwargs={"k": 4})
+    return vectorstore.as_retriever(search_kwargs={"k": 8})
 
 def retrieve_relevant_chunks(retriever, query: str) -> str:
     """

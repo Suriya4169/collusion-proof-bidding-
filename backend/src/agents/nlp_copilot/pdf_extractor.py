@@ -1,19 +1,19 @@
 import fitz  # PyMuPDF
 import io
 
-def extract_text_from_pdf(pdf_bytes: bytes) -> str:
+def extract_text_from_pdf(file_path: str) -> str:
     """
     Extract all raw text from a PDF file using PyMuPDF.
     
     Args:
-        pdf_bytes (bytes): The raw bytes of the uploaded PDF file.
+        file_path (str): The path to the PDF file on disk.
         
     Returns:
         str: The complete extracted text from all pages.
     """
     try:
-        # Open the PDF from bytes
-        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        # Open the PDF from the file path
+        doc = fitz.open(file_path)
         text = ""
         
         # Iterate through every page and extract text

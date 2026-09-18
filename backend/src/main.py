@@ -25,8 +25,9 @@ app = FastAPI(
         "name": "Proprietary",
     },
     openapi_tags=[
-        {"name": "Tender Intelligence (Agent 1)", "description": "Core NLP and rule verification for MSMEs."},
-        {"name": "Financial & Legal (Agent 1)", "description": "Financial trackers and legal generators."},
+        {"name": "1. Tender Intelligence Copilot", "description": "Core NLP pipeline that analyzes government PDFs, calculates eligibility, and recommends schemes."},
+        {"name": "2. Financial & Legal Trackers", "description": "Financial penalty trackers and legal demand notice generators."},
+        {"name": "3. System Actions", "description": "Platform health and diagnostic endpoints."}
     ]
 )
 
@@ -40,9 +41,9 @@ app.add_middleware(
 )
 
 # Register Routers
-app.include_router(msme.router, prefix="/api", tags=["MSME Actions"])
+app.include_router(msme.router, prefix="/api")
 
-@app.get("/health")
+@app.get("/health", tags=["3. System Actions"])
 async def health():
     return {"status": "ok", "message": "MSME Copilot API is running"}
 
