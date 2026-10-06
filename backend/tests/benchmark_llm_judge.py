@@ -97,7 +97,7 @@ Evaluate the extraction. Did it hallucinate? Is it completely accurate based on 
 # ═══════════════════════════════════════════════════════════
 def run_benchmark():
     print("\n" + "="*60)
-    print("🚀 STARTING LLM-AS-A-JUDGE BENCHMARK SUITE")
+    print("STARTING LLM-AS-A-JUDGE BENCHMARK SUITE")
     print("="*60)
     
     all_pdfs = [f for f in os.listdir(TEST_DATA_DIR) if f.endswith(".pdf")]
@@ -108,7 +108,7 @@ def run_benchmark():
         
     # Randomly select PDFs
     selected_pdfs = random.sample(all_pdfs, min(SAMPLE_SIZE, len(all_pdfs)))
-    print(f"📂 Evaluating a random sample of {len(selected_pdfs)} PDFs out of {len(all_pdfs)} total.")
+    print(f"Evaluating a random sample of {len(selected_pdfs)} PDFs out of {len(all_pdfs)} total.")
     print("-" * 60)
     
     total_time = 0
@@ -136,7 +136,7 @@ def run_benchmark():
             json_str = extracted_data.model_dump_json(indent=2)
             
             # 4. LLM Judge Evaluation
-            print("   ⚖️ Calling LLM Judge to evaluate extraction...")
+            print("   Calling LLM Judge to evaluate extraction...")
             judge_eval = evaluate_with_judge(raw_text, json_str)
             
             end_time = time.time()
@@ -148,16 +148,16 @@ def run_benchmark():
             if judge_eval.is_hallucinated:
                 hallucination_count += 1
                 
-            status_symbol = "❌ HALLUCINATION DETECTED" if judge_eval.is_hallucinated else "✅ CLEAN"
+            status_symbol = "[HALLUCINATION DETECTED]" if judge_eval.is_hallucinated else "[CLEAN]"
             
-            print(f"   ⏱️ Latency: {latency:.2f} seconds")
-            print(f"   🎯 Judge Score: {judge_eval.accuracy_score}/10.0 ({status_symbol})")
-            print(f"   💬 Reasoning: {judge_eval.reasoning}")
+            print(f"   Latency: {latency:.2f} seconds")
+            print(f"   Judge Score: {judge_eval.accuracy_score}/10.0 ({status_symbol})")
+            print(f"   Reasoning: {judge_eval.reasoning}")
             
         except Exception as e:
-            print(f"   ❌ Error processing {pdf_name}: {e}")
+            print(f"   Error processing {pdf_name}: {e}")
             
-        print("   ⏳ Sleeping for 5 seconds to respect Hugging Face free tier rate limits...")
+        print("   Sleeping for 5 seconds to respect Hugging Face free tier rate limits...")
         time.sleep(5)
             
     # ═══════════════════════════════════════════════════════════
@@ -169,7 +169,7 @@ def run_benchmark():
     hallucination_rate = (hallucination_count / num_processed) * 100 if num_processed > 0 else 0
     
     print("\n" + "="*60)
-    print("🏆 FINAL BENCHMARK REPORT")
+    print("FINAL BENCHMARK REPORT")
     print("="*60)
     print(f"Total PDFs Evaluated : {num_processed}")
     print(f"Average Latency      : {avg_latency:.2f} seconds per document")
@@ -177,9 +177,9 @@ def run_benchmark():
     print(f"Hallucination Rate   : {hallucination_rate:.1f}%")
     
     if hallucination_rate == 0:
-        print("\n🌟 ENTERPRISE GRADE ACHIEVED: Zero hallucinations detected in this sample.")
+        print("\nENTERPRISE GRADE ACHIEVED: Zero hallucinations detected in this sample.")
     else:
-        print("\n⚠️ WARNING: Hallucinations detected. Prompt tuning required.")
+        print("\nWARNING: Hallucinations detected. Prompt tuning required.")
     print("="*60 + "\n")
 
 if __name__ == "__main__":
