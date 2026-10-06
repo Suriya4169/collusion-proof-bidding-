@@ -1,0 +1,38 @@
+[
+  {
+    "tender_id": "T2001",
+    "title": "Supply of Cloud Hosting Infrastructure",
+    "category": "IT Services",
+    "min_turnover_lakhs": 20,
+    "min_experience_years": 1,
+    "required_certifications": [],
+    "allows_startup_exemption": true
+  },
+  {
+    "tender_id": "T2002",
+    "title": "Development of State Portal V2",
+    "category": "IT Services",
+    "min_turnover_lakhs": 50,
+    "min_experience_years": 3,
+    "required_certifications": ["ISO 9001"],
+    "allows_startup_exemption": false
+  },
+  {
+    "tender_id": "T2003",
+    "title": "Procurement of Heavy Machinery",
+    "category": "Manufacturing",
+    "min_turnover_lakhs": 100,
+    "min_experience_years": 5,
+    "required_certifications": ["Make In India"],
+    "allows_startup_exemption": false
+  },
+  {
+    "tender_id": "T2004",
+    "title": "Cybersecurity Audit for Govt Databases",
+    "category": "IT Services",
+    "min_turnover_lakhs": 60,
+    "min_experience_years": 5,
+    "required_certifications": ["ISO 27001"],
+    "allows_startup_exemption": false
+  }
+]
