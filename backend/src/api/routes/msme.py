@@ -5,13 +5,14 @@ from pydantic import BaseModel
 from typing import List
 
 # Import all our 10 sub-agents
-from src.agents.nlp_copilot.pdf_extractor import extract_text_from_pdf
-from src.agents.nlp_copilot.rag_retriever import chunk_text, build_hybrid_retriever, retrieve_relevant_chunks
-from src.agents.nlp_copilot.neural_extractor import extract_rules_with_gemini
-from src.agents.nlp_copilot.symbolic_verifier import verify_eligibility, MSMEProfile
-from src.agents.nlp_copilot.tender_simplifier import generate_plain_summary, translate_summary
-from src.agents.nlp_copilot.scheme_discoverer import discover_schemes
-from src.agents.nlp_copilot.payment_tracker import calculate_payment_penalty
+from src.agents.module1.agent1_copilot.pdf_extractor import extract_text_from_pdf
+from src.agents.module1.agent1_copilot.rag_retriever import chunk_text, build_hybrid_retriever, retrieve_relevant_chunks
+from src.agents.module1.agent1_copilot.neural_extractor import extract_rules_with_gemini
+from src.agents.module1.agent1_copilot.symbolic_verifier import verify_eligibility, MSMEProfile
+from src.agents.module1.agent1_copilot.tender_simplifier import generate_plain_summary, translate_summary
+from src.agents.module1.agent1_copilot.scheme_discoverer import discover_schemes
+from src.agents.module1.agent1_copilot.payment_tracker import calculate_payment_penalty
+from src.agents.module1.agent1_copilot.invoice_extractor import extract_payment_data
 from src.models.schemas import VerificationReport, PaymentPenaltyReport, APIErrorResponse
 
 router = APIRouter()
@@ -92,38 +93,49 @@ async def analyze_tender(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-class PaymentTrackRequest(BaseModel):
-    invoice_date: str # YYYY-MM-DD
-    payment_date: str # YYYY-MM-DD
-    principal_amount: float
-    company_name: str
-    buyer_name: str
-
 @router.post(
     "/payments/track",
     response_model=PaymentPenaltyReport,
     tags=["2. Financial & Legal Trackers"],
-    summary="Calculate Section 16 Payment Penalty",
-    description="Takes an invoice date and payment date to strictly calculate the compounding MSME Act interest penalty (3x RBI rate) and draft a legal demand notice.",
-    responses={
-        400: {"model": APIErrorResponse, "description": "Validation Error"},
-        500: {"model": APIErrorResponse, "description": "Internal Server Error"}
-    }
+    summary="Calculate Section 16 Payment Penalty via AI OCR",
+    description="Accepts an Invoice PDF and Bank Receipt PDF. Extracts dates using Gemini, strictly calculates the compounding MSME Act interest penalty (3x RBI rate), and drafts a legal demand notice."
 )
-async def track_payment(request: PaymentTrackRequest):
+async def track_payment(
+    invoice_file: UploadFile = File(...),
+    receipt_file: UploadFile = File(...),
+    company_name: str = Form(...)
+):
     """
-    Runs Sub-Agent 1.10 to calculate MSME payment penalties under Section 16.
+    Runs Sub-Agent 2.1 (Extractor) -> Sub-Agent 1.10 (Math Engine)
     """
     try:
+        # Save files temporarily
+        inv_path = f"{UPLOAD_DIR}/inv_{invoice_file.filename}"
+        rect_path = f"{UPLOAD_DIR}/rect_{receipt_file.filename}"
+        
+        with open(inv_path, "wb") as buffer: shutil.copyfileobj(invoice_file.file, buffer)
+        with open(rect_path, "wb") as buffer: shutil.copyfileobj(receipt_file.file, buffer)
+            
+        # 1. Extract raw text from both PDFs
+        invoice_text = extract_text_from_pdf(inv_path)
+        receipt_text = extract_text_from_pdf(rect_path)
+        
+        # 2. Agent 2.1: Extract JSON variables with Gemini
+        ai_data = extract_payment_data(invoice_text, receipt_text)
+        
+        # 3. Agent 1.10: Pure Python Math Engine
         report = calculate_payment_penalty(
-            invoice_date_str=request.invoice_date,
-            payment_date_str=request.payment_date,
-            principal_amount=request.principal_amount,
-            company_name=request.company_name,
-            buyer_name=request.buyer_name
+            invoice_date_str=ai_data["invoice_date"],
+            payment_date_str=ai_data["payment_date"],
+            principal_amount=ai_data["principal_amount"],
+            company_name=company_name,
+            buyer_name=ai_data["buyer_name"]
         )
+        
+        # Cleanup
+        os.remove(inv_path)
+        os.remove(rect_path)
+        
         return report
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

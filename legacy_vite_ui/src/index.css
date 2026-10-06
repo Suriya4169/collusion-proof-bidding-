@@ -1,0 +1,375 @@
+@import "tailwindcss";
+
+:root {
+  --bg-main: #080c14;
+  --bg-header: #0b0f19;
+  --bg-sidebar: #090d16;
+  --bg-panel: rgba(15, 23, 42, 0.7);
+  --bg-panel-elevated: rgba(22, 32, 54, 0.75);
+  --bg-panel-subtle: rgba(15, 23, 42, 0.4);
+  --border-subtle: rgba(255, 255, 255, 0.07);
+  --border-strong: rgba(255, 255, 255, 0.12);
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --theme-menu-bg: #0f172a;
+  --theme-menu-border: #334155;
+  --theme-menu-text: #f8fafc;
+}
+
+/* 1. LIGHT THEME: Daylight Tiranga / Govt Clean */
+[data-theme="light"] {
+  --bg-main: #f4f6fa;
+  --bg-header: #ffffff;
+  --bg-sidebar: #f8fafc;
+  --bg-panel: #ffffff;
+  --bg-panel-elevated: #ffffff;
+  --bg-panel-subtle: #f8fafc;
+  --border-subtle: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --theme-menu-bg: #ffffff;
+  --theme-menu-border: #cbd5e1;
+  --theme-menu-text: #0f172a;
+}
+
+[data-theme="light"] body {
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+}
+
+[data-theme="light"] .glass-panel,
+[data-theme="light"] .glass-panel-elevated,
+[data-theme="light"] .glass-panel-subtle {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.05) !important;
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .bg-\[\#080c14\],
+[data-theme="light"] .bg-\[\#0b0f19\],
+[data-theme="light"] .bg-\[\#090d16\] {
+  background-color: #f8fafc !important;
+}
+
+[data-theme="light"] header.bg-\[\#0b0f19\]\/90,
+[data-theme="light"] header.bg-\[\#0b0f19\]\/80 {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05) !important;
+}
+
+[data-theme="light"] aside.bg-\[\#090d16\] {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+[data-theme="light"] .bg-slate-900,
+[data-theme="light"] .bg-slate-900\/95,
+[data-theme="light"] .bg-slate-900\/90,
+[data-theme="light"] .bg-slate-900\/80,
+[data-theme="light"] .bg-slate-900\/60 {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+[data-theme="light"] .bg-slate-950,
+[data-theme="light"] .bg-slate-950\/90,
+[data-theme="light"] .bg-slate-950\/80,
+[data-theme="light"] .bg-slate-950\/70,
+[data-theme="light"] .bg-slate-950\/60 {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+[data-theme="light"] .bg-slate-800,
+[data-theme="light"] .bg-slate-800\/90,
+[data-theme="light"] .bg-slate-800\/80,
+[data-theme="light"] .bg-slate-800\/40 {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #1e293b !important;
+}
+
+[data-theme="light"] .text-white,
+[data-theme="light"] .text-slate-100 {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .text-slate-200 {
+  color: #1e293b !important;
+}
+
+[data-theme="light"] .text-slate-300 {
+  color: #334155 !important;
+}
+
+[data-theme="light"] .text-slate-400 {
+  color: #64748b !important;
+}
+
+[data-theme="light"] .border-slate-800,
+[data-theme="light"] .border-slate-800\/80,
+[data-theme="light"] .border-slate-800\/90,
+[data-theme="light"] .border-slate-700,
+[data-theme="light"] .border-slate-700\/80 {
+  border-color: #e2e8f0 !important;
+}
+
+[data-theme="light"] input,
+[data-theme="light"] select,
+[data-theme="light"] textarea {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+[data-theme="light"] input::placeholder,
+[data-theme="light"] textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+[data-theme="light"] table tr.bg-slate-950\/80 {
+  background-color: #f1f5f9 !important;
+  color: #334155 !important;
+}
+
+[data-theme="light"] table tbody tr:hover {
+  background-color: #f8fafc !important;
+}
+
+[data-theme="light"] ::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+}
+
+/* 2. OCEAN THEME: Nordic Sapphire / Deep Sea */
+[data-theme="ocean"] {
+  --bg-main: #050e1d;
+  --bg-header: #09162e;
+  --bg-sidebar: #071226;
+  --bg-panel: rgba(13, 31, 60, 0.7);
+  --bg-panel-elevated: rgba(18, 42, 80, 0.8);
+  --bg-panel-subtle: rgba(13, 31, 60, 0.4);
+  --border-subtle: rgba(56, 189, 248, 0.12);
+  --border-strong: rgba(56, 189, 248, 0.22);
+  --text-primary: #f0f9ff;
+  --text-secondary: #bae6fd;
+  --text-muted: #7dd3fc;
+  --theme-menu-bg: #09162e;
+  --theme-menu-border: #1e3a8a;
+  --theme-menu-text: #f0f9ff;
+}
+
+[data-theme="ocean"] body {
+  background-color: #050e1d;
+  color: #f0f9ff;
+}
+
+[data-theme="ocean"] .bg-\[\#080c14\] {
+  background-color: #050e1d !important;
+}
+[data-theme="ocean"] .bg-\[\#0b0f19\] {
+  background-color: #09162e !important;
+}
+[data-theme="ocean"] .bg-\[\#090d16\] {
+  background-color: #071226 !important;
+}
+[data-theme="ocean"] .glass-panel {
+  background: rgba(13, 31, 60, 0.7) !important;
+  border-color: rgba(56, 189, 248, 0.15) !important;
+}
+[data-theme="ocean"] .glass-panel-elevated {
+  background: rgba(18, 42, 80, 0.8) !important;
+  border-color: rgba(56, 189, 248, 0.25) !important;
+}
+
+/* 3. FOREST THEME: Bharat Emerald / Vedic Eco */
+[data-theme="forest"] {
+  --bg-main: #04110b;
+  --bg-header: #081d14;
+  --bg-sidebar: #061710;
+  --bg-panel: rgba(9, 32, 23, 0.75);
+  --bg-panel-elevated: rgba(14, 46, 33, 0.8);
+  --bg-panel-subtle: rgba(9, 32, 23, 0.4);
+  --border-subtle: rgba(16, 185, 129, 0.15);
+  --border-strong: rgba(16, 185, 129, 0.28);
+  --text-primary: #ecfdf5;
+  --text-secondary: #a7f3d0;
+  --text-muted: #6ee7b7;
+  --theme-menu-bg: #081d14;
+  --theme-menu-border: #065f46;
+  --theme-menu-text: #ecfdf5;
+}
+
+[data-theme="forest"] body {
+  background-color: #04110b;
+  color: #ecfdf5;
+}
+
+[data-theme="forest"] .bg-\[\#080c14\] {
+  background-color: #04110b !important;
+}
+[data-theme="forest"] .bg-\[\#0b0f19\] {
+  background-color: #081d14 !important;
+}
+[data-theme="forest"] .bg-\[\#090d16\] {
+  background-color: #061710 !important;
+}
+[data-theme="forest"] .glass-panel {
+  background: rgba(9, 32, 23, 0.75) !important;
+  border-color: rgba(16, 185, 129, 0.18) !important;
+}
+
+/* 4. SEPIA THEME: Warm Parchment / Executive Paper */
+[data-theme="sepia"] {
+  --bg-main: #fbf7ee;
+  --bg-header: #ffffff;
+  --bg-sidebar: #f5eedf;
+  --bg-panel: #ffffff;
+  --bg-panel-elevated: #ffffff;
+  --bg-panel-subtle: #f7f1e6;
+  --border-subtle: #e6dcce;
+  --border-strong: #d4c5b1;
+  --text-primary: #2d261e;
+  --text-secondary: #4a3e31;
+  --text-muted: #786957;
+  --theme-menu-bg: #ffffff;
+  --theme-menu-border: #d4c5b1;
+  --theme-menu-text: #2d261e;
+}
+
+[data-theme="sepia"] body {
+  background-color: #fbf7ee;
+  color: #2d261e;
+}
+
+[data-theme="sepia"] .glass-panel,
+[data-theme="sepia"] .glass-panel-elevated,
+[data-theme="sepia"] .glass-panel-subtle {
+  background: #ffffff !important;
+  border-color: #e6dcce !important;
+  box-shadow: 0 4px 16px -2px rgba(80, 60, 40, 0.06) !important;
+  color: #2d261e !important;
+}
+
+[data-theme="sepia"] .bg-\[\#080c14\],
+[data-theme="sepia"] .bg-\[\#0b0f19\],
+[data-theme="sepia"] .bg-\[\#090d16\] {
+  background-color: #f5eedf !important;
+}
+
+[data-theme="sepia"] header.bg-\[\#0b0f19\]\/90,
+[data-theme="sepia"] header.bg-\[\#0b0f19\]\/80 {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-color: #e6dcce !important;
+}
+
+[data-theme="sepia"] aside.bg-\[\#090d16\] {
+  background-color: #f5eedf !important;
+  border-color: #e6dcce !important;
+}
+
+[data-theme="sepia"] .bg-slate-900,
+[data-theme="sepia"] .bg-slate-900\/95,
+[data-theme="sepia"] .bg-slate-900\/90,
+[data-theme="sepia"] .bg-slate-900\/80,
+[data-theme="sepia"] .bg-slate-900\/60 {
+  background-color: #ffffff !important;
+  border-color: #e6dcce !important;
+}
+
+[data-theme="sepia"] .bg-slate-950,
+[data-theme="sepia"] .bg-slate-950\/90,
+[data-theme="sepia"] .bg-slate-950\/80,
+[data-theme="sepia"] .bg-slate-950\/70 {
+  background-color: #fbf7ee !important;
+  border-color: #e6dcce !important;
+}
+
+[data-theme="sepia"] .bg-slate-800,
+[data-theme="sepia"] .bg-slate-800\/90,
+[data-theme="sepia"] .bg-slate-800\/80,
+[data-theme="sepia"] .bg-slate-800\/40 {
+  background-color: #f1e9db !important;
+  border-color: #d8cbbb !important;
+  color: #3b3127 !important;
+}
+
+[data-theme="sepia"] .text-white,
+[data-theme="sepia"] .text-slate-100 {
+  color: #2d261e !important;
+}
+[data-theme="sepia"] .text-slate-200 {
+  color: #3b3127 !important;
+}
+[data-theme="sepia"] .text-slate-300 {
+  color: #4a3e31 !important;
+}
+[data-theme="sepia"] .text-slate-400 {
+  color: #786957 !important;
+}
+[data-theme="sepia"] .border-slate-800,
+[data-theme="sepia"] .border-slate-700 {
+  border-color: #e6dcce !important;
+}
+
+[data-theme="sepia"] input,
+[data-theme="sepia"] select,
+[data-theme="sepia"] textarea {
+  background-color: #ffffff !important;
+  color: #2d261e !important;
+  border-color: #d4c5b1 !important;
+}
+
+@layer base {
+  body {
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background-color: #080c14;
+    color: #f1f5f9;
+    transition: background-color 0.25s ease, color 0.25s ease;
+  }
+}
+
+/* Custom glassmorphism and glow accents */
+.glass-panel {
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.glass-panel-elevated {
+  background: rgba(22, 32, 54, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.glass-panel-subtle {
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(11, 15, 23, 0.6);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(71, 85, 105, 0.5);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.8);
+}
