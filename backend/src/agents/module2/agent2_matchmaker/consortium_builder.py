@@ -61,8 +61,24 @@ def analyze_jv_opportunities(msme_id: str) -> List[Dict[str, Any]]:
     """
     Finds all tenders that the MSME CANNOT win alone, but CAN win if they form a JV.
     """
-    msmes = load_json(MSME_DB_PATH)
-    tenders = load_json(TENDER_DB_PATH)
+    msmes = None
+    tenders = None
+    try:
+        from src.db.database import SessionLocal
+        from src.db.models import MSMEModel, TenderModel
+        db = SessionLocal()
+        db_msmes = db.query(MSMEModel).all()
+        db_tenders = db.query(TenderModel).all()
+        if db_msmes and db_tenders:
+            msmes = [m.to_dict() for m in db_msmes]
+            tenders = [t.to_dict() for t in db_tenders]
+        db.close()
+    except Exception:
+        pass
+
+    if not msmes or not tenders:
+        msmes = load_json(MSME_DB_PATH)
+        tenders = load_json(TENDER_DB_PATH)
     
     primary_msme = next((m for m in msmes if m['msme_id'] == msme_id), None)
     if not primary_msme:

@@ -2,8 +2,7 @@ import os
 import sys
 from fpdf import FPDF
 
-# Import our existing PDF extractor
-from src.agents.module1_copilot.pdf_extractor import extract_text_from_pdf
+from src.agents.module1.agent1_copilot.pdf_extractor import extract_text_from_pdf
 
 def create_tampered_corrigendum():
     original_pdf_path = "test_data/GeM-Bidding-9292805.pdf"

@@ -2,8 +2,7 @@ import os
 import nltk
 from typing import List, Dict
 
-# Import the PDF extractor we built in Module 1
-from src.agents.module1_copilot.pdf_extractor import extract_text_from_pdf
+from src.agents.module1.agent1_copilot.pdf_extractor import extract_text_from_pdf
 
 # Ensure the NLTK tokenizer model is downloaded
 try:

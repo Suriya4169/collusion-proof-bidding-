@@ -15,4 +15,8 @@ env/
 .venv/
 .pytest_cache/
 chroma_db/
+*.db
+*.sqlite3
+*.sqlite
 backend/test_data/uploads/
+backend/test_data/vault_storage/
