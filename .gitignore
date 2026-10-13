@@ -20,3 +20,5 @@ chroma_db/
 *.sqlite
 backend/test_data/uploads/
 backend/test_data/vault_storage/
+.next/
+frontend/.next/

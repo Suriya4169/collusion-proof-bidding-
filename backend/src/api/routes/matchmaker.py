@@ -4,7 +4,7 @@ from typing import Dict, Any
 from src.agents.module2.agent2_matchmaker.matchmaker import find_solo_opportunities
 from src.agents.module2.agent2_matchmaker.consortium_builder import analyze_jv_opportunities
 
-router = APIRouter(prefix="/api/matchmaker", tags=["Matchmaker & Consortium"])
+router = APIRouter(prefix="/api/matchmaker", tags=["Autonomous Matchmaker & Coalition Builder"])
 
 @router.get("/{msme_id}", response_model=Dict[str, Any])
 async def get_matchmaker_dashboard(msme_id: str):

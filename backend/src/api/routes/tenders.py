@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from src.db.database import get_db
 from src.db.models import TenderModel
 
-router = APIRouter(prefix="/api/tenders", tags=["Tender Marketplace API"])
+router = APIRouter(prefix="/api/tenders", tags=["GeM Procurement Repository"])
 
 class TenderCreateRequest(BaseModel):
     tender_id: str

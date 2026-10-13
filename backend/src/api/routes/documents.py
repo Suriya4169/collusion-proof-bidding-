@@ -8,7 +8,7 @@ from datetime import datetime
 from src.db.database import get_db
 from src.db.models import DocumentModel, MSMEModel
 
-router = APIRouter(prefix="/api/documents", tags=["Document Vault API"])
+router = APIRouter(prefix="/api/documents", tags=["Procurement Readiness Vault"])
 
 VAULT_STORAGE_DIR = "test_data/vault_storage"
 os.makedirs(VAULT_STORAGE_DIR, exist_ok=True)

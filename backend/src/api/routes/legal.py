@@ -16,7 +16,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 @router.post(
     "/diff",
     response_model=DiffReport,
-    tags=["Module 2. Legal Semantic Diff"],
+    tags=["Corrigendum Integrity & Tamper Detector"],
     summary="Run Module 2 Corrigendum Tampering Detection",
     description="Takes an original tender PDF and a corrigendum PDF. Runs 3 Sub-Agents to mathematically diff the semantics of all clauses, flag tampering, and compute a final Corruption Risk score.",
     responses={

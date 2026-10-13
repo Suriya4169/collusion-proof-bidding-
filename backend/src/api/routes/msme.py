@@ -24,7 +24,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 @router.post(
     "/tender/analyze",
     response_model=VerificationReport,
-    tags=["1. Tender Intelligence Copilot"],
+    tags=["Bid Eligibility & Compliance Auditor"],
     summary="Run Neurosymbolic Copilot Pipeline",
     description="Accepts a Tender PDF and MSME Profile. Runs a massive 9-agent pipeline to mathematically determine eligibility, calculate CDS scores, translate to Hindi, and recommend government schemes.",
     responses={
@@ -96,7 +96,7 @@ async def analyze_tender(
 @router.post(
     "/payments/track",
     response_model=PaymentPenaltyReport,
-    tags=["2. Financial & Legal Trackers"],
+    tags=["Statutory Payment Recovery Engine"],
     summary="Calculate Section 16 Payment Penalty via AI OCR",
     description="Accepts an Invoice PDF and Bank Receipt PDF. Extracts dates using Gemini, strictly calculates the compounding MSME Act interest penalty (3x RBI rate), and drafts a legal demand notice."
 )

@@ -33,14 +33,14 @@ This production API powers the ProcureGuard AI platform:
     version="1.5.0",
     lifespan=lifespan,
     openapi_tags=[
-        {"name": "1. Tender Intelligence Copilot", "description": "Core Neurosymbolic NLP pipeline analyzing tender PDFs and evaluating eligibility."},
-        {"name": "2. Financial & Legal Trackers", "description": "Compounding interest penalty tracker and legal demand notice generator."},
-        {"name": "Module 2. Legal Semantic Diff", "description": "Corrigendum tampering detection via Cosine Similarity."},
-        {"name": "Matchmaker & Consortium", "description": "AI Matchmaker and Joint Venture Consortium builder."},
-        {"name": "Tender Marketplace API", "description": "Dynamic GeM tender repository with search and filters."},
-        {"name": "Document Vault API", "description": "MSME Certificate Vault, expiry tracking, and readiness audit."},
-        {"name": "LangGraph Orchestrator", "description": "LangGraph state machine multi-agent workflow."},
-        {"name": "3. System Actions", "description": "Platform health and diagnostic endpoints."}
+        {"name": "Bid Eligibility & Compliance Auditor", "description": "Neurosymbolic NLP pipeline analyzing tender PDFs and evaluating compliance."},
+        {"name": "Statutory Payment Recovery Engine", "description": "Section 16 MSMED compounding interest penalty tracker and legal demand notice generator."},
+        {"name": "Corrigendum Integrity & Tamper Detector", "description": "Agent 5 Corrigendum tampering detection via Cosine Similarity and temporal decay."},
+        {"name": "Autonomous Matchmaker & Coalition Builder", "description": "Module 2 Solo tender matchmaker and Joint Venture (JV) coalition builder."},
+        {"name": "GeM Procurement Repository", "description": "Live GeM tender repository with sector filtering and search."},
+        {"name": "Procurement Readiness Vault", "description": "MSME Certificate Vault, 71.4% readiness scoring, and proactive expiry alerts."},
+        {"name": "Multi-Agent Workflow Orchestrator", "description": "Compiled LangGraph state machine multi-agent execution pipeline."},
+        {"name": "System Health & Telemetry", "description": "Platform health, diagnostics, and active module status."}
     ]
 )
 
@@ -65,7 +65,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @app.post(
     "/api/orchestrator/analyze",
-    tags=["LangGraph Orchestrator"],
+    tags=["Multi-Agent Workflow Orchestrator"],
     summary="Execute Multi-Agent Pipeline via LangGraph StateGraph"
 )
 async def orchestrate_tender_analysis(
@@ -131,7 +131,7 @@ async def orchestrate_tender_analysis(
             except Exception:
                 pass
 
-@app.get("/health", tags=["3. System Actions"])
+@app.get("/health", tags=["System Health & Telemetry"])
 async def health():
     return {
         "status": "ok",
