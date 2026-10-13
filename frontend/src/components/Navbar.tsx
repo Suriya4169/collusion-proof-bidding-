@@ -26,6 +26,12 @@ export default function Navbar() {
                 <Link href="/legal-diff" className="text-slate-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">
                   Legal Diff
                 </Link>
+                <Link href="/matchmaker" className="text-slate-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                  Matchmaker
+                </Link>
+                <Link href="/documents" className="text-slate-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                  Document Vault
+                </Link>
               </div>
             </div>
           </div>
