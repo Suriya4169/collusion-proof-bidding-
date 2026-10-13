@@ -112,3 +112,84 @@ class DocumentModel(Base):
             "expiry_date": self.expiry_date or "No Expiry",
             "status": self.status
         }
+
+
+class UserModel(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, index=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
+    full_name = Column(String, nullable=False)
+    role = Column(String, default="msme") # "msme", "government_auditor", "admin"
+    msme_id = Column(String, nullable=True) # Linked MSME Profile (e.g. "M101")
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "email": self.email,
+            "full_name": self.full_name,
+            "role": self.role,
+            "msme_id": self.msme_id,
+            "is_active": self.is_active,
+            "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S") if self.created_at else ""
+        }
+
+
+class JobModel(Base):
+    __tablename__ = "async_jobs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    job_id = Column(String, unique=True, index=True, nullable=False)
+    job_type = Column(String, nullable=False) # e.g. "TENDER_ANALYSIS", "OCR_VERIFICATION"
+    status = Column(String, default="PENDING") # "PENDING", "PROCESSING", "COMPLETED", "FAILED"
+    progress_percent = Column(Integer, default=0)
+    result_json = Column(Text, default="{}")
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    @property
+    def result(self):
+        try:
+            return json.loads(self.result_json) if self.result_json else {}
+        except Exception:
+            return {}
+
+    @result.setter
+    def result(self, val):
+        self.result_json = json.dumps(val or {})
+
+    def to_dict(self):
+        return {
+            "job_id": self.job_id,
+            "job_type": self.job_type,
+            "status": self.status,
+            "progress_percent": self.progress_percent,
+            "result": self.result,
+            "error_message": self.error_message,
+            "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S") if self.created_at else "",
+            "updated_at": self.updated_at.strftime("%Y-%m-%d %H:%M:%S") if self.updated_at else ""
+        }
+
+
+class M2MClientModel(Base):
+    __tablename__ = "m2m_clients"
+
+    id = Column(Integer, primary_key=True, index=True)
+    client_id = Column(String, unique=True, index=True, nullable=False)
+    client_name = Column(String, nullable=False) # e.g. "GeM Central Ingestion Service"
+    api_key_hash = Column(String, index=True, nullable=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            "client_id": self.client_id,
+            "client_name": self.client_name,
+            "is_active": self.is_active,
+            "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S") if self.created_at else ""
+        }
+

@@ -180,5 +180,39 @@ def seed_database():
                 db.add(d)
             db.commit()
 
+        # 4. Seed Default RBAC Users for Authentication
+        from .models import UserModel
+        from src.core.auth import hash_password
+
+        if db.query(UserModel).count() == 0:
+            default_users = [
+                UserModel(
+                    email="msme@apex.in",
+                    hashed_password=hash_password("Password123!"),
+                    full_name="Rajesh Sharma (Apex Tools)",
+                    role="msme",
+                    msme_id="M101",
+                    is_active=True
+                ),
+                UserModel(
+                    email="auditor@gem.gov.in",
+                    hashed_password=hash_password("Password123!"),
+                    full_name="Dr. Vikram Patel (GeM Auditor)",
+                    role="government_auditor",
+                    msme_id=None,
+                    is_active=True
+                ),
+                UserModel(
+                    email="admin@procureguard.in",
+                    hashed_password=hash_password("Password123!"),
+                    full_name="System Administrator",
+                    role="admin",
+                    msme_id=None,
+                    is_active=True
+                )
+            ]
+            db.add_all(default_users)
+            db.commit()
+
     finally:
         db.close()

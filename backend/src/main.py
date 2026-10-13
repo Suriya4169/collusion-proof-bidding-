@@ -5,7 +5,7 @@ from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
-from src.api.routes import msme, legal, matchmaker, tenders, documents
+from src.api.routes import msme, legal, matchmaker, tenders, documents, auth, m2m, jobs
 from src.db.seed import seed_database
 from src.orchestrator.graph import procurement_graph
 
@@ -14,31 +14,37 @@ load_dotenv(dotenv_path="../.env")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Ensure SQLite tables exist and are seeded
+    # Startup: Ensure SQLite/PostgreSQL tables exist and are seeded
     seed_database()
     yield
 
 app = FastAPI(
     title="ProcureGuard AI — Intelligent Procurement Integrity Platform",
     description="""
-## Full Semester 7 Neurosymbolic & Multi-Agent Backend
-    
+## Enterprise Multi-Agent & Sovereign Ingestion Backend
+
 This production API powers the ProcureGuard AI platform:
 1. **Module 1 (NLP Copilot):** 10-Sub-Agent pipeline with PyMuPDF, Ephemeral RAG, Gemini 1.5, Symbolic Verifier, CDS scoring, Hindi translation, and MSMED Section 16 payment penalty tracker.
 2. **Module 2 (Matchmaker & Consortium):** Proactive Solo tender matching and Joint Venture (JV) recommendations.
 3. **Agent 5 (Legal Semantic Diff):** Corrigendum tampering detection via Sentence-Transformers and temporal risk scoring.
 4. **Marketplace & Document Vault:** Dynamic active GeM tenders and MSME certificate readiness auditing.
-5. **LangGraph Pipeline:** Multi-agent state machine orchestrator.
+5. **Authentication & RBAC:** JWT Bearer tokens and role-based access control (MSME vs Government Auditor).
+6. **M2M Sovereign Gateway:** Machine-to-Machine API key ingestion for GeM/CPPP portal webhooks.
+7. **Asynchronous Job Queue:** Non-blocking background workers for large tender processing.
+8. **LangGraph Pipeline:** Multi-agent state machine orchestrator.
 """,
-    version="1.5.0",
+    version="2.0.0",
     lifespan=lifespan,
     openapi_tags=[
+        {"name": "Authentication & Access Control (RBAC)", "description": "JWT authentication, bcrypt password hashing, and role-based access control."},
         {"name": "Bid Eligibility & Compliance Auditor", "description": "Neurosymbolic NLP pipeline analyzing tender PDFs and evaluating compliance."},
         {"name": "Statutory Payment Recovery Engine", "description": "Section 16 MSMED compounding interest penalty tracker and legal demand notice generator."},
         {"name": "Corrigendum Integrity & Tamper Detector", "description": "Agent 5 Corrigendum tampering detection via Cosine Similarity and temporal decay."},
         {"name": "Autonomous Matchmaker & Coalition Builder", "description": "Module 2 Solo tender matchmaker and Joint Venture (JV) coalition builder."},
         {"name": "GeM Procurement Repository", "description": "Live GeM tender repository with sector filtering and search."},
         {"name": "Procurement Readiness Vault", "description": "MSME Certificate Vault, 71.4% readiness scoring, and proactive expiry alerts."},
+        {"name": "Machine-to-Machine (M2M) Sovereign Gateway", "description": "API-Key authenticated endpoints and webhooks for direct government server integration."},
+        {"name": "Asynchronous Task Queue (Background Workers)", "description": "Background worker queue for non-blocking multi-page tender processing."},
         {"name": "Multi-Agent Workflow Orchestrator", "description": "Compiled LangGraph state machine multi-agent execution pipeline."},
         {"name": "System Health & Telemetry", "description": "Platform health, diagnostics, and active module status."}
     ]
@@ -54,11 +60,14 @@ app.add_middleware(
 )
 
 # Register All API Routers
+app.include_router(auth.router)
 app.include_router(msme.router, prefix="/api")
 app.include_router(legal.router, prefix="/api")
 app.include_router(matchmaker.router)
 app.include_router(tenders.router)
 app.include_router(documents.router)
+app.include_router(m2m.router)
+app.include_router(jobs.router)
 
 UPLOAD_DIR = "test_data/uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
