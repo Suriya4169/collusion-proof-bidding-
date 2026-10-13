@@ -3,12 +3,27 @@
 import { useState, useEffect } from 'react';
 import MatchmakerCard from '@/components/MatchmakerCard';
 import JvCard from '@/components/JvCard';
+import RegisterMsmeModal from '@/components/RegisterMsmeModal';
 
 export default function MatchmakerPage() {
   const [msmeId, setMsmeId] = useState('M101');
+  const [msmeList, setMsmeList] = useState<{ msme_id: string; company_name: string }[]>([]);
+  const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const fetchMsmes = async () => {
+    try {
+      const res = await fetch('http://localhost:8000/api/msme/all');
+      if (res.ok) {
+        const data = await res.json();
+        setMsmeList(data);
+      }
+    } catch (e) {
+      console.warn('Could not load MSME list');
+    }
+  };
 
   const fetchDashboard = async (id: string) => {
     setLoading(true);
@@ -28,8 +43,14 @@ export default function MatchmakerPage() {
   };
 
   useEffect(() => {
+    fetchMsmes();
     fetchDashboard(msmeId);
   }, []);
+
+  const handleSelectChange = (newId: string) => {
+    setMsmeId(newId);
+    fetchDashboard(newId);
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,21 +68,31 @@ export default function MatchmakerPage() {
             <p className="text-gray-400">AI-powered Tender Discovery & Consortium Builder</p>
           </div>
           
-          <form onSubmit={handleSearch} className="flex gap-2">
-            <input 
-              type="text" 
+          <div className="flex flex-wrap items-center gap-3">
+            <select
               value={msmeId}
-              onChange={(e) => setMsmeId(e.target.value)}
-              placeholder="Enter MSME ID (e.g. M101)"
-              className="bg-white/5 border border-white/20 text-white rounded-lg px-4 py-2 focus:outline-none focus:border-indigo-500 w-48"
-            />
-            <button 
-              type="submit"
-              className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-lg font-bold transition-colors"
+              onChange={(e) => handleSelectChange(e.target.value)}
+              className="bg-white/10 border border-white/20 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
             >
-              Scan
+              {msmeList.length > 0 ? (
+                msmeList.map((m) => (
+                  <option key={m.msme_id} value={m.msme_id} className="bg-slate-900 text-white">
+                    {m.msme_id} - {m.company_name}
+                  </option>
+                ))
+              ) : (
+                <option value="M101" className="bg-slate-900">M101 - Apex Tools</option>
+              )}
+            </select>
+
+            <button
+              onClick={() => setIsRegisterOpen(true)}
+              className="bg-emerald-600/30 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/50 px-3 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-1"
+            >
+              <span>+</span>
+              <span>Register MSME</span>
             </button>
-          </form>
+          </div>
         </header>
 
         {loading && (
@@ -155,6 +186,16 @@ export default function MatchmakerPage() {
           </div>
         )}
       </div>
+
+      <RegisterMsmeModal
+        isOpen={isRegisterOpen}
+        onClose={() => setIsRegisterOpen(false)}
+        onSuccess={async (newId) => {
+          await fetchMsmes();
+          setMsmeId(newId);
+          fetchDashboard(newId);
+        }}
+      />
     </div>
   );
 }

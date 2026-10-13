@@ -1,6 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import RegisterMsmeModal from '@/components/RegisterMsmeModal';
 
 interface VaultDoc {
   id: number | null;
@@ -22,8 +24,19 @@ interface VaultData {
   proactive_alerts: string[];
 }
 
-export default function DocumentVaultPage() {
-  const [msmeId, setMsmeId] = useState('M101');
+interface MSMEItem {
+  msme_id: string;
+  company_name: string;
+  sector: string;
+}
+
+function VaultContent() {
+  const searchParams = useSearchParams();
+  const initialId = searchParams.get('msme_id') || 'M101';
+
+  const [msmeId, setMsmeId] = useState(initialId);
+  const [msmeList, setMsmeList] = useState<MSMEItem[]>([]);
+  const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [vaultData, setVaultData] = useState<VaultData | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -31,9 +44,23 @@ export default function DocumentVaultPage() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   // Form states
+  const [uploadMode, setUploadMode] = useState<'ai' | 'manual'>('ai');
   const [selectedType, setSelectedType] = useState('ISO 9001');
   const [expiryDate, setExpiryDate] = useState('');
   const [fileToUpload, setFileToUpload] = useState<File | null>(null);
+
+  // Fetch dynamic MSME list
+  const fetchMsmes = async () => {
+    try {
+      const res = await fetch('http://localhost:8000/api/msme/all');
+      if (res.ok) {
+        const data = await res.json();
+        setMsmeList(data);
+      }
+    } catch (e) {
+      console.warn('Could not fetch dynamic MSME list');
+    }
+  };
 
   const fetchVault = async (id: string) => {
     setLoading(true);
@@ -53,11 +80,56 @@ export default function DocumentVaultPage() {
   };
 
   useEffect(() => {
+    fetchMsmes();
+  }, []);
+
+  useEffect(() => {
     fetchVault(msmeId);
   }, [msmeId]);
 
+  // Autonomous AI OCR Scan & Verify
+  const handleAutoVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!fileToUpload) {
+      setError('Please select a certificate file to scan.');
+      return;
+    }
+
+    setUploading(true);
+    setError(null);
+    setSuccessMsg(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', fileToUpload);
+      formData.append('msme_id', msmeId);
+
+      const res = await fetch('http://localhost:8000/api/documents/extract-and-verify', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || 'Autonomous verification failed.');
+      }
+
+      setSuccessMsg(`✓ AI Verified: Detected as ${data.detected_type} (Expiry: ${data.extracted_expiry}) - Readiness Score is now ${data.readiness_score}%!`);
+      setFileToUpload(null);
+      await fetchVault(msmeId);
+    } catch (err: any) {
+      setError(err.message || 'Auto-verification error');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (uploadMode === 'ai') {
+      return handleAutoVerify(e);
+    }
+
     if (!fileToUpload) {
       setError('Please select a file to upload');
       return;
@@ -145,12 +217,29 @@ export default function DocumentVaultPage() {
               onChange={(e) => setMsmeId(e.target.value)}
               className="bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="M101">M101 - Apex Precision Tools</option>
-              <option value="M102">M102 - BioClean Waste Systems</option>
-              <option value="M103">M103 - DataCraft Analytics</option>
-              <option value="M104">M104 - EcoEnergy Solar Tech</option>
-              <option value="M105">M105 - Precision Hydraulics</option>
+              {msmeList.length > 0 ? (
+                msmeList.map((m) => (
+                  <option key={m.msme_id} value={m.msme_id}>
+                    {m.msme_id} - {m.company_name}
+                  </option>
+                ))
+              ) : (
+                <>
+                  <option value="M101">M101 - Apex Precision Tools</option>
+                  <option value="M102">M102 - BioClean Waste Systems</option>
+                  <option value="M103">M103 - DataCraft Analytics</option>
+                  <option value="M104">M104 - EcoEnergy Solar Tech</option>
+                  <option value="M105">M105 - Precision Hydraulics</option>
+                </>
+              )}
             </select>
+            <button
+              onClick={() => setIsRegisterOpen(true)}
+              className="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition"
+              title="Register a new enterprise"
+            >
+              + New
+            </button>
           </div>
         </div>
 
@@ -235,61 +324,103 @@ export default function DocumentVaultPage() {
 
           {/* Quick Upload Form Card */}
           <div className="bg-slate-800/50 border border-slate-700/80 rounded-2xl p-6 backdrop-blur-sm flex flex-col justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Upload to Vault</p>
-              <h3 className="text-sm text-slate-300 mt-0.5">Encrypt & Verify with AI</h3>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Upload to Vault</p>
+                <h3 className="text-sm text-slate-300 mt-0.5">Encrypt & Verify with AI</h3>
+              </div>
+              <div className="flex bg-slate-900 p-0.5 rounded-lg border border-slate-700 text-[11px] font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setUploadMode('ai')}
+                  className={`px-2.5 py-1 rounded-md transition ${uploadMode === 'ai' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                >
+                  ⚡ AI Scan
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUploadMode('manual')}
+                  className={`px-2.5 py-1 rounded-md transition ${uploadMode === 'manual' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'}`}
+                >
+                  Manual
+                </button>
+              </div>
             </div>
 
             <form onSubmit={handleUpload} className="mt-4 space-y-3">
-              <div>
-                <select
-                  value={selectedType}
-                  onChange={(e) => setSelectedType(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
-                  <option value="ISO 9001">ISO 9001 (Quality Standard)</option>
-                  <option value="Solvency Certificate">Solvency Certificate (Bank)</option>
-                  <option value="Bank Statement">Bank Statement (6 Months)</option>
-                  <option value="Udyam Certificate">Udyam Registration</option>
-                  <option value="GST Registration">GST Registration (REG-06)</option>
-                  <option value="PAN Card">PAN Card</option>
-                  <option value="Last 3 Years ITR">Audited Balance Sheet / ITR</option>
-                </select>
-              </div>
+              {uploadMode === 'ai' ? (
+                <div>
+                  <label className="flex flex-col items-center justify-center border-2 border-dashed border-slate-700 hover:border-blue-500/70 bg-slate-900/60 rounded-xl p-4 cursor-pointer transition text-center">
+                    <span className="text-2xl mb-1">🤖</span>
+                    <span className="text-xs font-medium text-slate-200">
+                      {fileToUpload ? fileToUpload.name : 'Select or Drop any Certificate PDF'}
+                    </span>
+                    <span className="text-[10px] text-slate-400 mt-0.5">
+                      AI auto-detects GST, Udyam, ISO, PAN, ITR & Expiry
+                    </span>
+                    <input
+                      type="file"
+                      className="hidden"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          setFileToUpload(e.target.files[0]);
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <select
+                      value={selectedType}
+                      onChange={(e) => setSelectedType(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    >
+                      <option value="ISO 9001">ISO 9001 (Quality Standard)</option>
+                      <option value="Solvency Certificate">Solvency Certificate (Bank)</option>
+                      <option value="Bank Statement">Bank Statement (6 Months)</option>
+                      <option value="Udyam Certificate">Udyam Registration</option>
+                      <option value="GST Registration">GST Registration (REG-06)</option>
+                      <option value="PAN Card">PAN Card</option>
+                      <option value="Last 3 Years ITR">Audited Balance Sheet / ITR</option>
+                    </select>
+                  </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <input
-                  type="date"
-                  value={expiryDate}
-                  onChange={(e) => setExpiryDate(e.target.value)}
-                  placeholder="Expiry date"
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-                <label className="flex items-center justify-center bg-slate-700/60 hover:bg-slate-700 text-white rounded-lg px-2 py-1.5 text-xs cursor-pointer border border-slate-600 transition truncate">
-                  <span>{fileToUpload ? fileToUpload.name.slice(0, 10) + '...' : 'Select File'}</span>
-                  <input
-                    type="file"
-                    className="hidden"
-                    onChange={(e) => {
-                      if (e.target.files && e.target.files[0]) {
-                        setFileToUpload(e.target.files[0]);
-                      }
-                    }}
-                  />
-                </label>
-              </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="date"
+                      value={expiryDate}
+                      onChange={(e) => setExpiryDate(e.target.value)}
+                      placeholder="Expiry date"
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                    <label className="flex items-center justify-center bg-slate-700/60 hover:bg-slate-700 text-white rounded-lg px-2 py-1.5 text-xs cursor-pointer border border-slate-600 transition truncate">
+                      <span>{fileToUpload ? fileToUpload.name.slice(0, 10) + '...' : 'Select File'}</span>
+                      <input
+                        type="file"
+                        className="hidden"
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files[0]) {
+                            setFileToUpload(e.target.files[0]);
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                </>
+              )}
 
               <button
                 type="submit"
-                disabled={uploading}
-                className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 text-white font-semibold py-2 rounded-lg text-xs transition flex items-center justify-center gap-2"
+                disabled={uploading || !fileToUpload}
+                className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 text-white font-semibold py-2 rounded-lg text-xs transition flex items-center justify-center gap-2 shadow-lg shadow-blue-900/30"
               >
                 {uploading ? (
-                  <span>Encrypting & Storing...</span>
+                  <span>{uploadMode === 'ai' ? 'Running OCR & AI Verification...' : 'Encrypting & Storing...'}</span>
                 ) : (
                   <>
-                    <span>Upload Document</span>
-                    <span>↑</span>
+                    <span>{uploadMode === 'ai' ? '⚡ Autonomous AI Scan & Verify' : 'Upload Document ↑'}</span>
                   </>
                 )}
               </button>
@@ -421,6 +552,24 @@ export default function DocumentVaultPage() {
           </div>
         </div>
       </div>
+
+      <RegisterMsmeModal
+        isOpen={isRegisterOpen}
+        onClose={() => setIsRegisterOpen(false)}
+        onSuccess={async (newId) => {
+          await fetchMsmes();
+          setMsmeId(newId);
+        }}
+      />
     </div>
   );
 }
+
+export default function DocumentVaultPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#0F172A] text-white p-24">Loading Document Vault...</div>}>
+      <VaultContent />
+    </Suspense>
+  );
+}
+

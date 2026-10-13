@@ -4,12 +4,15 @@ from typing import List, Dict
 
 from src.agents.module1.agent1_copilot.pdf_extractor import extract_text_from_pdf
 
-# Ensure the NLTK tokenizer model is downloaded
+# Ensure the NLTK tokenizer model is available
 try:
-    nltk.data.find('tokenizers/punkt_tab')
-except LookupError:
-    nltk.download('punkt_tab')
-    nltk.download('punkt')
+    nltk.sent_tokenize("Initialization test.")
+except Exception:
+    try:
+        nltk.download('punkt', quiet=True)
+        nltk.download('punkt_tab', quiet=True)
+    except Exception:
+        pass
 
 def extract_clauses_from_pdf(pdf_path: str) -> List[str]:
     """

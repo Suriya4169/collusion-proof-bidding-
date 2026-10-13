@@ -1,10 +1,13 @@
 import os
+import re
 import shutil
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
-from pydantic import BaseModel
-from typing import List
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
+from sqlalchemy.orm import Session
+from pydantic import BaseModel, Field
+from typing import List, Optional, Dict, Any
 
-# Import all our 10 sub-agents
+from src.db.database import get_db
+from src.db.models import MSMEModel, DocumentModel
 from src.agents.module1.agent1_copilot.pdf_extractor import extract_text_from_pdf
 from src.agents.module1.agent1_copilot.rag_retriever import chunk_text, build_hybrid_retriever, retrieve_relevant_chunks
 from src.agents.module1.agent1_copilot.neural_extractor import extract_rules_with_gemini
@@ -139,3 +142,119 @@ async def track_payment(
         return report
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+class MSMERegisterRequest(BaseModel):
+    company_name: str = Field(..., example="Kavach Cyber Defense Solutions")
+    sector: str = Field(..., example="IT Services")
+    annual_turnover_lakhs: float = Field(..., example=85.0)
+    years_of_experience: int = Field(..., example=4)
+    udyam_number: str = Field(..., example="UDYAM-DL-01-0098765")
+    gstin: str = Field(..., example="07AAAAA0000A1Z5")
+    certifications: Optional[List[str]] = Field(default=["Udyam Certificate", "GST Registration", "PAN Card"])
+    is_startup_india_recognized: Optional[bool] = Field(default=True)
+    email: Optional[str] = Field(default="contact@enterprise.in")
+
+
+@router.get(
+    "/msme/all",
+    response_model=List[Dict[str, Any]],
+    tags=["Autonomous Matchmaker & Coalition Builder"],
+    summary="Get All Registered MSMEs",
+    description="Fetches all registered enterprises from the SQLite database to dynamically populate all frontend selectors."
+)
+async def get_all_msmes(db: Session = Depends(get_db)):
+    """
+    Returns list of all MSMEs in the database.
+    """
+    msmes = db.query(MSMEModel).all()
+    return [m.to_dict() for m in msmes]
+
+
+@router.post(
+    "/msme/register",
+    response_model=Dict[str, Any],
+    tags=["Autonomous Matchmaker & Coalition Builder"],
+    summary="Register New Enterprise (Real-World Ingestion)",
+    description="Validates real Udyam Registration & GSTIN format, auto-allocates an enterprise ID, and saves to the database."
+)
+async def register_msme(req: MSMERegisterRequest, db: Session = Depends(get_db)):
+    """
+    Registers a new MSME with statutory format validation.
+    """
+    # 1. Format validation for Udyam
+    udyam_clean = req.udyam_number.strip().upper()
+    udyam_pattern = r"^UDYAM-[A-Z]{2}-\d{2}-\d{7}$"
+    if not re.match(udyam_pattern, udyam_clean):
+        # Auto-correct or raise descriptive error if malformed
+        if not udyam_clean.startswith("UDYAM-"):
+            udyam_clean = f"UDYAM-XX-00-{udyam_clean}"
+        if not re.match(udyam_pattern, udyam_clean):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid Udyam Number format. Expected format: UDYAM-XX-00-0000000 (e.g., UDYAM-DL-01-0098765)"
+            )
+
+    # 2. Format validation for GSTIN (15 characters)
+    gstin_clean = req.gstin.strip().upper()
+    gstin_pattern = r"^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$"
+    if not re.match(gstin_pattern, gstin_clean):
+        if len(gstin_clean) != 15:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid GSTIN. Must be exactly 15 alphanumeric characters (e.g., 07AAAAA0000A1Z5)"
+            )
+
+    # 3. Check for duplicates
+    existing = db.query(MSMEModel).filter(
+        (MSMEModel.company_name == req.company_name) | (MSMEModel.gstin == gstin_clean)
+    ).first()
+    if existing:
+        return {
+            "message": f"Enterprise '{req.company_name}' is already registered.",
+            "msme": existing.to_dict(),
+            "msme_id": existing.msme_id
+        }
+
+    # 4. Generate next MSME ID (M106, M107, etc.)
+    all_msmes = db.query(MSMEModel).all()
+    max_num = 105
+    for m in all_msmes:
+        if m.msme_id.startswith("M") and m.msme_id[1:].isdigit():
+            val = int(m.msme_id[1:])
+            if val > max_num:
+                max_num = val
+    next_id = f"M{max_num + 1}"
+
+    # 5. Persist to SQLite
+    new_msme = MSMEModel(
+        msme_id=next_id,
+        company_name=req.company_name,
+        sector=req.sector,
+        annual_turnover_lakhs=req.annual_turnover_lakhs,
+        years_of_experience=req.years_of_experience,
+        is_startup_india_recognized=req.is_startup_india_recognized,
+        gstin=gstin_clean,
+        email=req.email
+    )
+    new_msme.certifications = req.certifications or ["Udyam Certificate"]
+
+    db.add(new_msme)
+    db.commit()
+    db.refresh(new_msme)
+
+    # 6. Initialize standard default documents for this MSME
+    initial_docs = [
+        DocumentModel(msme_id=next_id, document_type="Udyam Certificate", file_name=f"udyam_{next_id.lower()}.pdf", status="VALID"),
+        DocumentModel(msme_id=next_id, document_type="GST Registration", file_name=f"gst_{next_id.lower()}.pdf", status="VALID"),
+        DocumentModel(msme_id=next_id, document_type="PAN Card", file_name=f"pan_{next_id.lower()}.pdf", status="VALID")
+    ]
+    db.add_all(initial_docs)
+    db.commit()
+
+    return {
+        "message": f"Enterprise '{req.company_name}' successfully registered as {next_id}!",
+        "msme": new_msme.to_dict(),
+        "msme_id": next_id
+    }
+

@@ -1,10 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+import os
+import re
+import shutil
+import random
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
 
 from src.db.database import get_db
 from src.db.models import TenderModel
+from src.agents.module1.agent1_copilot.pdf_extractor import extract_text_from_pdf
 
 router = APIRouter(prefix="/api/tenders", tags=["GeM Procurement Repository"])
 
@@ -98,3 +103,142 @@ async def create_tender(payload: TenderCreateRequest, db: Session = Depends(get_
     db.refresh(tender)
 
     return {"message": "Tender created successfully", "tender": tender.to_dict()}
+
+
+@router.post("/upload-pdf", response_model=Dict[str, Any], status_code=201)
+async def upload_tender_pdf(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    """
+    Real-World GeM Tender Ingestion:
+    Accepts any official GeM or CPPP public tender notice PDF.
+    Extracts text using PyMuPDF and parses tender metadata (Bid ID, Ministry, EMD, Turnover, Category)
+    directly into SQLite database.
+    """
+    temp_dir = "test_data/uploads"
+    os.makedirs(temp_dir, exist_ok=True)
+    temp_path = os.path.join(temp_dir, f"tender_{file.filename}")
+
+    try:
+        with open(temp_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        # 1. Extract raw text with PyMuPDF
+        raw_text = extract_text_from_pdf(temp_path)
+        if not raw_text or len(raw_text.strip()) < 50:
+            raise HTTPException(status_code=400, detail="Uploaded PDF contains insufficient or unreadable text.")
+
+        # 2. Extract Bid/Tender ID
+        bid_match = re.search(r"GEM/\d{4}/[A-Z]/\d+", raw_text, re.IGNORECASE)
+        if not bid_match:
+            bid_match = re.search(r"(?:Bid Number|Tender ID|Tender Ref No|NIT No)[:\s]+([\w\-/]+)", raw_text, re.IGNORECASE)
+        
+        tender_id = bid_match.group(0).strip() if bid_match else f"GEM/2026/B/{random.randint(9100000, 9999999)}"
+
+        # 3. Extract Ministry / Department
+        dept_match = re.search(r"(Ministry of [A-Za-z\s&,]+|Department of [A-Za-z\s&,]+|Directorate of [A-Za-z\s&,]+|[\w\s]+Procurement Directorate)", raw_text, re.IGNORECASE)
+        department = dept_match.group(1).strip() if dept_match else "Central Public Procurement Portal"
+
+        # 4. Extract Title / Item Category
+        title_match = re.search(r"(?:Item Title|Name of Work|Title|Subject)[:\s]+([^\n\r.]+)", raw_text, re.IGNORECASE)
+        if title_match:
+            title = title_match.group(1).strip()
+        else:
+            # Fallback to file name without extension
+            base_name = os.path.splitext(file.filename)[0].replace("_", " ").title()
+            title = f"Procurement of {base_name}"
+
+        # 5. Classify Category based on keywords
+        text_lower = raw_text.lower()
+        if any(w in text_lower for w in ["software", "cloud", "portal", "hosting", "cyber", "it support", "developer"]):
+            category = "IT Services"
+        elif any(w in text_lower for w in ["machinery", "fabrication", "lathe", "precision", "components", "aerospace"]):
+            category = "Manufacturing"
+        elif any(w in text_lower for w in ["steel", "alloy", "copper", "iron", "chemicals", "cement", "pipes"]):
+            category = "Raw Materials"
+        else:
+            category = "Infrastructure"
+
+        # 6. Extract Turnover Requirement
+        turnover_match = re.search(r"(?:Turnover|Annual Turnover)[^\d\n\r]*(\d+(?:\.\d+)?)\s*(Lakh|Crore|Cr)?", raw_text, re.IGNORECASE)
+        min_turnover_lakhs = 25.0
+        if turnover_match:
+            val = float(turnover_match.group(1))
+            unit = (turnover_match.group(2) or "").lower()
+            if "crore" in unit or "cr" in unit:
+                min_turnover_lakhs = val * 100.0
+            else:
+                min_turnover_lakhs = val
+
+        # 7. Extract Experience Requirement
+        exp_match = re.search(r"(?:Experience)[^\d\n\r]*(\d+)\s*(?:years?|yrs?)", raw_text, re.IGNORECASE)
+        min_experience_years = int(exp_match.group(1)) if exp_match else 2
+
+        # 8. Extract EMD Amount
+        emd_match = re.search(r"(?:EMD Amount|Earnest Money Deposit|EMD)[^\d\n\r]*(?:Rs\.?|INR|₹)?\s*([\d,]+)", raw_text, re.IGNORECASE)
+        emd_amount_inr = 50000.0
+        if emd_match:
+            clean_emd = emd_match.group(1).replace(",", "")
+            try:
+                emd_amount_inr = float(clean_emd)
+            except Exception:
+                pass
+
+        # 9. Startup Exemption
+        allows_startup = bool(re.search(r"(?:startup exemption|exemption for msme|relaxed for startup)", raw_text, re.IGNORECASE))
+
+        # 10. Estimated Value
+        val_match = re.search(r"(?:Estimated Value|Estimated Bid Value|Contract Value)[^\d\n\r]*(?:Rs\.?|INR|₹)?\s*([\d,]+(?:\.\d+)?\s*(?:Lakh|Crore|Cr)?)", raw_text, re.IGNORECASE)
+        estimated_val = f"₹ {min_turnover_lakhs} Lakhs" if min_turnover_lakhs < 100 else f"₹ {round(min_turnover_lakhs/100, 2)} Crores"
+        if val_match:
+            estimated_val = f"₹ {val_match.group(1).strip()}"
+
+        # 11. Submission Deadline
+        date_match = re.search(r"(?:Bid End Date|Due Date|Submission Deadline)[^\d\n\r]*(\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4})", raw_text, re.IGNORECASE)
+        submission_deadline = date_match.group(1) if date_match else "2026-11-30"
+
+        # Persist or update in SQLite
+        existing = db.query(TenderModel).filter(TenderModel.tender_id == tender_id).first()
+        if existing:
+            existing.title = title
+            existing.department = department
+            existing.category = category
+            existing.min_turnover_lakhs = min_turnover_lakhs
+            existing.min_experience_years = min_experience_years
+            existing.allows_startup_exemption = allows_startup
+            existing.emd_amount_inr = emd_amount_inr
+            existing.estimated_value_inr = estimated_val
+            existing.submission_deadline = submission_deadline
+            existing.description = f"Autonomous GeM Ingestion from {file.filename}"
+            db.commit()
+            db.refresh(existing)
+            created_tender = existing
+        else:
+            new_tender = TenderModel(
+                tender_id=tender_id,
+                title=title,
+                department=department,
+                category=category,
+                min_turnover_lakhs=min_turnover_lakhs,
+                min_experience_years=min_experience_years,
+                allows_startup_exemption=allows_startup,
+                emd_amount_inr=emd_amount_inr,
+                estimated_value_inr=estimated_val,
+                submission_deadline=submission_deadline,
+                description=f"Autonomous GeM Ingestion from {file.filename}",
+                status="Active"
+            )
+            db.add(new_tender)
+            db.commit()
+            db.refresh(new_tender)
+            created_tender = new_tender
+
+        return {
+            "message": f"Successfully ingested tender '{title}' from GeM PDF!",
+            "tender": created_tender.to_dict()
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to ingest tender PDF: {str(e)}")
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+

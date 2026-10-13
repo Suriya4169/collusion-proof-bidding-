@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import UploadTenderModal from "@/components/UploadTenderModal";
 
 interface Tender {
   tender_id: string;
@@ -23,6 +24,7 @@ export default function Marketplace() {
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
+  const [isUploadOpen, setIsUploadOpen] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchTenders = async (category: string = "All", search: string = "") => {
@@ -140,12 +142,12 @@ export default function Marketplace() {
           </p>
         </div>
         <div className="mt-4 flex gap-3 md:mt-0 md:ml-4">
-          <Link
-            href="/dashboard"
+          <button
+            onClick={() => setIsUploadOpen(true)}
             className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 transition-colors"
           >
-            Upload Custom PDF
-          </Link>
+            + Upload Custom PDF
+          </button>
           <Link
             href="/matchmaker"
             className="inline-flex items-center px-4 py-2 border border-purple-500/30 rounded-lg shadow-sm text-sm font-semibold text-purple-300 bg-purple-950/40 hover:bg-purple-900/50 transition-colors"
@@ -291,6 +293,12 @@ export default function Marketplace() {
           </button>
         </div>
       )}
+
+      <UploadTenderModal
+        isOpen={isUploadOpen}
+        onClose={() => setIsUploadOpen(false)}
+        onSuccess={() => fetchTenders(selectedCategory, searchQuery)}
+      />
     </div>
   );
 }
