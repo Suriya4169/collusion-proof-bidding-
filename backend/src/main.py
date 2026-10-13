@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.api.routes import msme, legal
+from src.api.routes import msme, legal, matchmaker
 from dotenv import load_dotenv
 
 # Load environment variables (e.g. GEMINI_API_KEY)
@@ -35,6 +35,7 @@ app.add_middleware(
 # Register Routers
 app.include_router(msme.router, prefix="/api")
 app.include_router(legal.router, prefix="/api")
+app.include_router(matchmaker.router)
 
 @app.get("/health", tags=["3. System Actions"])
 async def health():

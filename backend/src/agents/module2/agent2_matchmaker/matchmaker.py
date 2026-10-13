@@ -22,7 +22,13 @@ def evaluate_solo_match(msme: Dict[str, Any], tender: Dict[str, Any]) -> Dict[st
     
     # 1. Sector Check (Hard Requirement)
     if msme['sector'] != tender['category']:
-        return {"is_eligible": False, "score": 0, "reason": f"Sector mismatch (MSME: {msme['sector']} vs Tender: {tender['category']})", "missing": ["sector"]}
+        return {
+            "is_eligible": False, 
+            "score": 0, 
+            "reason": f"Sector mismatch (MSME: {msme['sector']} vs Tender: {tender['category']})", 
+            "missing_requirements": [f"Sector mismatch (MSME is {msme['sector']}, Tender is {tender['category']})"],
+            "tender": tender
+        }
         
     score += 25
     
@@ -95,6 +101,8 @@ def find_solo_opportunities(msme_id: str) -> Dict[str, Any]:
     }
 
 if __name__ == "__main__":
+    import sys
+    sys.stdout.reconfigure(encoding='utf-8')
     # Test script for M101
     print("Running Matchmaker for M101 (TechSolve Solutions - 25L Turnover, Startup)...")
     results = find_solo_opportunities("M101")
