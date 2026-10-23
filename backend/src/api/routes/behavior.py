@@ -4,7 +4,8 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Header, status
 
 # Add agent-4-behavioral-biometrics to sys.path
-AGENT4_ROOT = Path(__file__).resolve().parent.parent.parent.parent / "agent-4-behavioral-biometrics"
+PROJECT_ROOT = Path(__file__).resolve().parents[4]
+AGENT4_ROOT = PROJECT_ROOT / "agent-4-behavioral-biometrics"
 if str(AGENT4_ROOT) not in sys.path:
     sys.path.insert(0, str(AGENT4_ROOT))
 

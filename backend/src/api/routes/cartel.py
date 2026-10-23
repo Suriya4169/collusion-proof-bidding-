@@ -6,7 +6,8 @@ from typing import List, Dict, Any
 from fastapi import APIRouter, HTTPException
 
 # Add cartel-graph to sys.path so we can cleanly import its modules
-CARTEL_ROOT = Path(__file__).resolve().parent.parent.parent.parent / "cartel-graph"
+PROJECT_ROOT = Path(__file__).resolve().parents[4]
+CARTEL_ROOT = PROJECT_ROOT / "cartel-graph"
 if str(CARTEL_ROOT) not in sys.path:
     sys.path.insert(0, str(CARTEL_ROOT))
 
