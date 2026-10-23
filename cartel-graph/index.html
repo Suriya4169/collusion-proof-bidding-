@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Aegis — Procurement Trust Console</title>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+<!-- D3.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+
+<link rel="stylesheet" href="styles.css?v=2" />
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- Sidebar / Brand rail -->
+  <aside class="rail">
+    <div class="rail-brand">
+      <div class="brand-mark">Æ</div>
+      <div class="brand-text">
+        <span class="brand-name">AEGIS</span>
+        <span class="brand-sub">Trust Optimization</span>
+      </div>
+    </div>
+
+    <nav class="rail-tabs" id="tabNav">
+      <button class="rail-tab active" data-tab="overview">
+        <span class="tab-index">01</span>
+        <span class="tab-label">Bid Overview</span>
+      </button>
+      <button class="rail-tab" data-tab="graph">
+        <span class="tab-index">02</span>
+        <span class="tab-label">Cartel Graph</span>
+        <span class="tab-flag" id="railFlagCount">2</span>
+      </button>
+      <button class="rail-tab" data-tab="input">
+        <span class="tab-index">03</span>
+        <span class="tab-label">Add Bidder</span>
+      </button>
+    </nav>
+
+    <div class="rail-footer">
+      <div class="rail-status">
+        <span class="status-dot"></span>
+        Bayesian engine — live
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="main-view">
+
+    <!-- TAB 1 : OVERVIEW -->
+    <section class="tab-panel active" id="tab-overview">
+      <header class="view-header">
+        <div>
+          <p class="eyebrow">Tender #KTC-2026-0447 &middot; Road Rehabilitation Package</p>
+          <h1>Bid Integrity Overview</h1>
+        </div>
+      </header>
+
+      <div class="kpi-grid">
+        <div class="glass-card kpi">
+          <span class="kpi-label">Bidders evaluated</span>
+          <span class="kpi-value" id="kpiBiddersEvaluated">0</span>
+        </div>
+        <div class="glass-card kpi kpi-danger">
+          <span class="kpi-label">Flagged networks</span>
+          <span class="kpi-value" id="kpiFlaggedNetworks">0</span>
+        </div>
+        <div class="glass-card kpi kpi-danger">
+          <span class="kpi-label">Bidders under suspicion</span>
+          <span class="kpi-value" id="kpiBiddersSuspicion">0</span>
+        </div>
+        <div class="glass-card kpi">
+          <span class="kpi-label">Mean anomaly score</span>
+          <span class="kpi-value" id="kpiMeanAnomaly">0.00</span>
+        </div>
+      </div>
+
+      <div class="glass-card overview-note">
+        <p>The Graph Cartel Agent has processed submission metadata across all bidders — beneficial owners,
+        network fingerprints, and settlement accounts — and identified <strong id="overviewNetworkCount">0</strong> clusters where
+        supposedly independent bidders share verifiable infrastructure. Open <strong>Cartel Graph</strong> to
+        inspect the network and drill into shared metadata.</p>
+      </div>
+    </section>
+
+    <!-- TAB 3 : BIDDER INPUT -->
+    <section class="tab-panel" id="tab-input">
+      <header class="view-header">
+        <div>
+          <p class="eyebrow">Live data entry &middot; updates the active analysis</p>
+          <h1>Add or update bidder</h1>
+        </div>
+      </header>
+
+      <div class="input-layout">
+        <form class="glass-card bidder-form" id="bidderForm">
+          <div class="form-grid">
+            <label>Bidder ID<input id="bidderIdInput" required placeholder="B008" /></label>
+            <label>Company name<input id="bidderNameInput" required placeholder="New Construction Ltd" /></label>
+            <label>Beneficial owners<input id="ownerInput" placeholder="Jane Doe, Robert Chen" /></label>
+            <label>IP address<input id="ipInput" placeholder="203.0.113.50" /></label>
+            <label>Bank routing code<input id="bankInput" placeholder="021000021" /></label>
+            <label>Declared assets<input id="assetInput" placeholder="ASSET-9001, ASSET-9002" /></label>
+          </div>
+          <button class="btn-primary" type="submit">Save bidder to analysis</button>
+          <p class="form-status" id="bidderFormStatus" role="status"></p>
+        </form>
+
+        <div class="glass-card bidder-roster">
+          <p class="insp-eyebrow">Active bidders</p>
+          <h2 class="roster-title" id="rosterCount">0 bidders</h2>
+          <ul class="insp-list" id="bidderRoster"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2 : CARTEL GRAPH -->
+    <section class="tab-panel" id="tab-graph">
+      <header class="view-header">
+        <div>
+          <p class="eyebrow">Bipartite network &middot; bidders · directors · IP fingerprints · settlement routing</p>
+          <h1>Cartel Graph</h1>
+        </div>
+        <div class="view-actions">
+          <label class="toggle">
+            <input type="checkbox" id="toggleFlaggedOnly" />
+            <span>Flagged connections only</span>
+          </label>
+          <button class="btn-ghost" id="resetZoom">Reset view</button>
+        </div>
+      </header>
+
+      <div class="graph-layout">
+
+        <!-- Graph canvas -->
+        <div class="glass-card graph-card">
+          <div class="graph-toolbar">
+            <div class="legend">
+              <span class="legend-item"><i class="dot dot-bidder"></i>Bidder</span>
+              <span class="legend-item"><i class="dot dot-director"></i>Director / Owner</span>
+              <span class="legend-item"><i class="dot dot-ip"></i>IP fingerprint</span>
+              <span class="legend-item"><i class="dot dot-bank"></i>Routing code</span>
+              <span class="legend-item"><i class="line line-collusion"></i>Collusion link</span>
+            </div>
+            <div class="graph-hint" id="graphHint">Hover a node to trace its connections. Click for detail.</div>
+          </div>
+          <svg id="cartelSvg"></svg>
+        </div>
+
+        <!-- Inspector drawer -->
+        <aside class="glass-card inspector" id="inspector">
+          <div class="inspector-empty" id="inspectorEmpty">
+            <p class="inspector-icon">◎</p>
+            <p>Select a node to inspect shared metadata, ownership chains, and anomaly scoring.</p>
+          </div>
+          <div class="inspector-content" id="inspectorContent" hidden></div>
+        </aside>
+
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script src="app.js?v=8"></script>
+</body>
+</html>

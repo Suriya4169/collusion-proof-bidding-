@@ -1,0 +1,7 @@
+# Runtime dependencies for serving a trained model (versions this project was tested with).
+# Training, evaluation and the test-suite need requirements-dev.txt as well.
+numpy==2.2.6
+fastapi==0.141.1
+starlette==1.6.0
+pydantic==2.13.5
+uvicorn==0.53.0

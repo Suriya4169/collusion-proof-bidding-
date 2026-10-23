@@ -1,0 +1,9 @@
+# Normalise ordinary text files to LF in the repository.
+* text=auto
+*.png binary
+*.gz binary
+
+# The model files are verified against a SHA-256 manifest of their exact bytes (python -m agent4 verify).
+# Git must never rewrite their line endings, or a Linux checkout / Docker build would fail the check.
+# This rule must stay AFTER the rules above: when attributes conflict, the last matching line wins.
+models/** -text

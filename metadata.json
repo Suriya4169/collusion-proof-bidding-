@@ -1,0 +1,6 @@
+{
+  "name": "Intelligent Procurement Integrity Platform",
+  "description": "A dark-themed intelligence platform for Indian MSME tender eligibility analysis and Government procurement integrity and corrupt amendment detection.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

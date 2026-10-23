@@ -1,0 +1,32 @@
+{
+  "session_id": "example-human_full",
+  "status": "scored",
+  "scoring_mode": "full",
+  "events_received": 60,
+  "events_scored": 60,
+  "model_version": "2.0.0+4f20da5f",
+  "behavioral_risk_score": 26.26,
+  "risk_category": "LOW_ANOMALY",
+  "behavioral_anomaly": false,
+  "anomaly_score": -6.5981,
+  "operational_threshold": 4.9927,
+  "reliability": "medium",
+  "behavioral_evidence": [
+    "typical_human_timing"
+  ],
+  "top_deviations": [
+    {
+      "feature": "hold_p25_ms",
+      "z": -1.27
+    },
+    {
+      "feature": "hold_log_kurtosis",
+      "z": -1.18
+    },
+    {
+      "feature": "hold_p10_ms",
+      "z": -1.16
+    }
+  ],
+  "message": null
+}

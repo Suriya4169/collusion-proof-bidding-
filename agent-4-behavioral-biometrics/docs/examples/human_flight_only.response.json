@@ -1,0 +1,32 @@
+{
+  "session_id": "example-human_flight_only",
+  "status": "scored",
+  "scoring_mode": "flight_only",
+  "events_received": 60,
+  "events_scored": 60,
+  "model_version": "2.0.0+4f20da5f",
+  "behavioral_risk_score": 36.75,
+  "risk_category": "LOW_ANOMALY",
+  "behavioral_anomaly": false,
+  "anomaly_score": 0.8049,
+  "operational_threshold": 5.0084,
+  "reliability": "medium",
+  "behavioral_evidence": [
+    "typical_human_timing"
+  ],
+  "top_deviations": [
+    {
+      "feature": "flight_cv",
+      "z": 1.5
+    },
+    {
+      "feature": "flight_log_skew",
+      "z": 1.41
+    },
+    {
+      "feature": "long_flight_ratio",
+      "z": -1.36
+    }
+  ],
+  "message": null
+}
