@@ -1,125 +1,121 @@
-'use client';
+"use client";
 
-interface FlaggedClause {
-  original_clause: string;
-  amended_clause: string;
-  similarity_score: number;
-  classification: string;
-  reason: string;
-  base_risk_score: number;
+import { useMemo } from "react";
+import { Clock } from "lucide-react";
+import { Gauge, JsonDrawer, Panel, Pill, riskTone, type Tone } from "./ui";
+import type { DiffReportData } from "@/lib/api";
+
+type Op = { kind: "same" | "del" | "add"; text: string };
+
+/** Word-level LCS diff used for the redline view. */
+function wordDiff(a: string, b: string): Op[] {
+  const x = a.split(/\s+/).filter(Boolean);
+  const y = b.split(/\s+/).filter(Boolean);
+  const dp: number[][] = Array.from({ length: x.length + 1 }, () => new Array<number>(y.length + 1).fill(0));
+  for (let i = x.length - 1; i >= 0; i--)
+    for (let j = y.length - 1; j >= 0; j--) dp[i][j] = x[i] === y[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+  const ops: Op[] = [];
+  let i = 0;
+  let j = 0;
+  while (i < x.length && j < y.length) {
+    if (x[i] === y[j]) ops.push({ kind: "same", text: x[i++] }), j++;
+    else if (dp[i + 1][j] >= dp[i][j + 1]) ops.push({ kind: "del", text: x[i++] });
+    else ops.push({ kind: "add", text: y[j++] });
+  }
+  while (i < x.length) ops.push({ kind: "del", text: x[i++] });
+  while (j < y.length) ops.push({ kind: "add", text: y[j++] });
+  return ops;
 }
 
-interface DiffReportData {
-  overall_manipulation_probability: number;
-  risk_level: string;
-  flagged_clauses: FlaggedClause[];
-  days_before_deadline: number;
-  temporal_multiplier: number;
-}
+const CLASS_TONE: Record<string, Tone> = { RESTRICTIVE: "fail", PERMISSIVE: "pass" };
 
-interface DiffReportProps {
-  data: DiffReportData | null;
-}
+export default function DiffReport({ data }: { data: DiffReportData }) {
+  const index = data.overall_manipulation_probability * 100;
+  const tone = riskTone(index);
+  const closeToDeadline = data.days_before_deadline <= 3;
 
-export default function DiffReport({ data }: DiffReportProps) {
-  if (!data) return null;
-
-  const isSafe = data.risk_level === 'SAFE';
-  const isCritical = data.risk_level === 'CRITICAL';
-  
-  const badgeColor = isCritical 
-    ? 'bg-red-500/20 text-red-400 border-red-500/50' 
-    : isSafe 
-      ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50'
-      : 'bg-amber-500/20 text-amber-400 border-amber-500/50';
+  const diffs = useMemo(() => data.flagged_clauses.map((c) => wordDiff(c.original_clause, c.amended_clause)), [data.flagged_clauses]);
 
   return (
-    <div className="mt-8 space-y-8 animate-fade-in-up">
-      {/* Top Status Bar */}
-      <div className={`p-6 rounded-2xl border backdrop-blur-md flex flex-col md:flex-row items-center justify-between shadow-2xl ${badgeColor}`}>
-        <div>
-          <h2 className="text-2xl font-extrabold tracking-tight">Vigilance Verdict</h2>
-          <p className="text-sm mt-1 opacity-90">Temporal Multiplier: {data.temporal_multiplier}x ({data.days_before_deadline} days before deadline)</p>
-        </div>
-        <div className="mt-4 md:mt-0 text-center md:text-right">
-          <div className="text-4xl font-black drop-shadow-md">
-            {(data.overall_manipulation_probability * 100).toFixed(0)}%
-          </div>
-          <div className="text-sm font-bold uppercase tracking-widest opacity-90">
-            {data.risk_level}
-          </div>
-        </div>
-      </div>
-
-      {/* Semantic Differences Table */}
-      {data.flagged_clauses.length > 0 ? (
-        <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
-          <div className="bg-black/40 px-6 py-4 border-b border-white/10">
-            <h3 className="text-lg font-bold text-white">Flagged Semantic Alterations</h3>
-            <p className="text-sm text-gray-400">Cosine Similarity dropped below 0.75 threshold</p>
-          </div>
-          <div className="divide-y divide-white/5">
-            {data.flagged_clauses.map((clause, idx) => {
-              const isRestrictive = clause.classification === 'RESTRICTIVE';
-              const isPermissive = clause.classification === 'PERMISSIVE';
-              
-              const rowColor = isRestrictive 
-                ? 'bg-red-500/5' 
-                : isPermissive 
-                  ? 'bg-emerald-500/5' 
-                  : 'bg-transparent';
-              
-              const tagColor = isRestrictive 
-                ? 'bg-red-500 text-white' 
-                : isPermissive 
-                  ? 'bg-emerald-500 text-white' 
-                  : 'bg-gray-600 text-gray-200';
-
-              return (
-                <div key={idx} className={`p-6 ${rowColor} hover:bg-white/5 transition-colors`}>
-                  <div className="flex justify-between items-start mb-4">
-                    <span className={`text-xs font-bold px-3 py-1 rounded-full ${tagColor}`}>
-                      {clause.classification}
-                    </span>
-                    <span className="text-xs font-mono text-gray-400 bg-black/50 px-2 py-1 rounded">
-                      Sim Score: {clause.similarity_score.toFixed(2)}
-                    </span>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Original Document</h4>
-                      <p className="text-gray-300 bg-black/20 p-4 rounded-lg font-serif italic border border-white/5">
-                        "{clause.original_clause}"
-                      </p>
-                    </div>
-                    <div className="space-y-2">
-                      <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Corrigendum Amendment</h4>
-                      <p className="text-white bg-indigo-500/10 p-4 rounded-lg font-serif border border-indigo-500/20">
-                        "{clause.amended_clause}"
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-4 flex items-start space-x-3 bg-black/30 p-3 rounded-lg border border-white/5">
-                    <span className="text-xl">🤖</span>
-                    <div>
-                      <h4 className="text-xs font-bold text-gray-400 uppercase">AI Reasoning</h4>
-                      <p className="text-sm text-gray-300 mt-1">{clause.reason}</p>
-                    </div>
-                  </div>
+    <div className="space-y-4">
+      <Panel>
+        <div className="flex flex-col items-center gap-6 sm:flex-row">
+          <Gauge value={index} tone={tone} label="Tampering risk index" />
+          <div className="w-full flex-1 space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Pill tone={tone} mono>
+                {data.risk_level}
+              </Pill>
+              <Pill tone={closeToDeadline ? "fail" : data.days_before_deadline <= 7 ? "warn" : "neutral"} icon={<Clock className="h-3 w-3" />}>
+                Modified {data.days_before_deadline} day{data.days_before_deadline === 1 ? "" : "s"} before bid closing
+              </Pill>
+            </div>
+            <dl className="grid grid-cols-3 gap-2 text-xs">
+              {[
+                ["Flagged clauses", String(data.flagged_clauses.length)],
+                ["Temporal multiplier", `${data.temporal_multiplier}×`],
+                ["Similarity floor", "0.75"],
+              ].map(([k, v]) => (
+                <div key={k} className="rounded border border-slate-800 bg-slate-950/50 px-3 py-2">
+                  <dt className="text-[10.5px] uppercase tracking-wider text-slate-500">{k}</dt>
+                  <dd className="font-mono text-lg font-semibold tabular-nums text-slate-100">{v}</dd>
                 </div>
-              );
-            })}
+              ))}
+            </dl>
+            <p className="text-[11.5px] text-slate-500">
+              Index = Σ clause base risk × temporal multiplier. Amendments close to the bid deadline weigh more under CVC transparency guidelines.
+            </p>
           </div>
         </div>
+      </Panel>
+
+      {data.flagged_clauses.length === 0 ? (
+        <Panel>
+          <p className="text-center text-xs text-emerald-300">No semantically significant amendments detected (all clause pairs ≥ 0.75 similarity).</p>
+        </Panel>
       ) : (
-        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-12 text-center shadow-2xl">
-          <div className="text-6xl mb-4">✅</div>
-          <h3 className="text-2xl font-bold text-emerald-400 mb-2">No Tampering Detected</h3>
-          <p className="text-emerald-300/70">The semantic differ did not find any restrictive changes in the corrigendum.</p>
-        </div>
+        <Panel title="Clause redline" subtitle="Deletions struck through in red · additions underlined in green" flush>
+          <ol className="divide-y divide-slate-800/70">
+            {data.flagged_clauses.map((c, i) => (
+              <li key={i} className="space-y-2 px-4 py-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-[11px] text-slate-500">#{i + 1}</span>
+                  <Pill tone={CLASS_TONE[c.classification] ?? "neutral"} mono>
+                    {c.classification}
+                  </Pill>
+                  <Pill tone="neutral" mono>
+                    cos-sim {c.similarity_score.toFixed(2)}
+                  </Pill>
+                  <Pill tone={riskTone(c.base_risk_score * 100)} mono>
+                    base risk {c.base_risk_score.toFixed(2)}
+                  </Pill>
+                </div>
+                <p className="rounded border border-slate-800 bg-slate-950/60 p-3 text-[13px] leading-relaxed text-slate-300">
+                  {diffs[i].map((op, k) =>
+                    op.kind === "same" ? (
+                      <span key={k}>{op.text} </span>
+                    ) : op.kind === "del" ? (
+                      <del key={k} className="mr-1 rounded-sm bg-rose-500/15 px-0.5 text-rose-300 decoration-rose-400">
+                        {op.text}
+                      </del>
+                    ) : (
+                      <ins key={k} className="mr-1 rounded-sm bg-emerald-500/15 px-0.5 text-emerald-300 decoration-emerald-400">
+                        {op.text}
+                      </ins>
+                    ),
+                  )}
+                </p>
+                <p className="text-xs leading-relaxed text-slate-400">
+                  <span className="font-medium text-slate-300">Analyst note: </span>
+                  {c.reason}
+                </p>
+              </li>
+            ))}
+          </ol>
+        </Panel>
       )}
+
+      <JsonDrawer title="POST /api/diff" data={data} filename="corrigendum-diff.json" />
     </div>
   );
 }

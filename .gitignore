@@ -22,3 +22,7 @@ backend/test_data/uploads/
 backend/test_data/vault_storage/
 .next/
 frontend/.next/
+
+# Uploads created when the API is launched from the repo root
+test_data/uploads/
+test_data/vault_storage/

@@ -1,206 +1,167 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import FileDropzone from "@/components/FileDropzone";
+import { FileSearch, Play } from "lucide-react";
 import ComplianceReport from "@/components/ComplianceReport";
+import { Btn, EmptyState, ErrorNotice, PageHeader, PageShell, Panel, PdfDropzone, Pill, Spinner } from "@/components/ui";
+import { apiRequest, errorMessage, formatINR, type VerificationReport } from "@/lib/api";
+
+interface VendorProfile {
+  companyName: string;
+  udyam: string;
+  turnover: number;
+  experience: number;
+  isRegisteredMSME: boolean;
+}
+
+const DEFAULT_PROFILE: VendorProfile = {
+  companyName: "Bharat Precision Engineering Pvt Ltd",
+  udyam: "UDYAM-TN-01-0012345",
+  turnover: 4850000,
+  experience: 5,
+  isRegisteredMSME: true,
+};
 
 function DashboardContent() {
-  const searchParams = useSearchParams();
-  const tenderIdParam = searchParams.get("tender_id");
-  const tenderTitleParam = searchParams.get("title");
+  const params = useSearchParams();
+  const tenderId = params.get("tender_id");
+  const tenderTitle = params.get("title");
 
-  const [profile, setProfile] = useState<any>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [report, setReport] = useState<any>(null);
+  const [profile, setProfile] = useState<VendorProfile>(DEFAULT_PROFILE);
+  const [file, setFile] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [report, setReport] = useState<VerificationReport | null>(null);
+  const [latency, setLatency] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Load the MSME profile from localStorage on mount
   useEffect(() => {
-    const saved = localStorage.getItem("msme_profile");
-    if (saved) {
-      setProfile(JSON.parse(saved));
-    } else {
-      // Default profile if not logged in yet
-      setProfile({
-        companyName: "Bharat Precision Engineering Pvt Ltd",
-        udyam: "UDYAM-TN-01-0012345",
-        turnover: 4850000,
-        experience: 5,
-        isRegisteredMSME: true
-      });
+    try {
+      const saved = localStorage.getItem("msme_profile");
+      if (saved) setProfile({ ...DEFAULT_PROFILE, ...(JSON.parse(saved) as Partial<VendorProfile>) });
+    } catch {
+      /* fall back to default profile */
     }
   }, []);
 
-  const handleFileUpload = async (file: File) => {
-    const activeProfile = profile || {
-      companyName: "Bharat Precision Engineering Pvt Ltd",
-      turnover: 4850000,
-      experience: 5,
-      isRegisteredMSME: true
-    };
-
-    setIsAnalyzing(true);
+  const analyze = async (target: File | null) => {
+    if (!target) return;
+    setBusy(true);
     setError(null);
     setReport(null);
-
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("company_name", activeProfile.companyName);
-    formData.append("turnover", (activeProfile.turnover || 4850000).toString());
-    formData.append("experience", (activeProfile.experience || 5).toString());
-    formData.append("certifications", "Udyam, ISO 9001");
-    formData.append("is_msme", (activeProfile.isRegisteredMSME ?? true).toString());
-    formData.append("target_language", "Hindi");
-
+    const form = new FormData();
+    form.append("file", target);
+    form.append("company_name", profile.companyName);
+    form.append("turnover", String(profile.turnover));
+    form.append("experience", String(profile.experience));
+    form.append("certifications", "Udyam, ISO 9001");
+    form.append("is_msme", String(profile.isRegisteredMSME));
+    form.append("target_language", "Hindi");
     try {
-      // Connects to our FastAPI backend running on port 8000
-      const response = await fetch("http://localhost:8000/api/tender/analyze", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error(`Server returned ${response.status}: ${await response.text()}`);
-      }
-
-      const data = await response.json();
-      setReport(data);
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || "An error occurred while analyzing the tender.");
+      const res = await apiRequest<VerificationReport>("/api/tender/analyze", { method: "POST", body: form });
+      setReport(res.data);
+      setLatency(res.latencyMs);
+    } catch (e) {
+      setError(errorMessage(e));
     } finally {
-      setIsAnalyzing(false);
+      setBusy(false);
     }
   };
 
-  const handleRunDemoSample = async () => {
-    // Generates a mock File object to simulate uploading GeM sample tender
-    const dummyBlob = new Blob(["%PDF-1.4 Mock GeM Tender RFP Document Supply of Precision Machined Components min turnover 250L EMD 50000 experience 3 years"], { type: "application/pdf" });
-    const dummyFile = new File([dummyBlob], tenderIdParam ? `${tenderIdParam.replace(/\//g, "-")}.pdf` : "GeM-Bidding-9292805.pdf", { type: "application/pdf" });
-    await handleFileUpload(dummyFile);
+  const runSample = () => {
+    const blob = new Blob(
+      ["%PDF-1.4 Mock GeM Tender RFP Document Supply of Precision Machined Components min turnover 250L EMD 50000 experience 3 years"],
+      { type: "application/pdf" },
+    );
+    const name = tenderId ? `${tenderId.replace(/\//g, "-")}.pdf` : "GeM-Bidding-9292805.pdf";
+    const sample = new File([blob], name, { type: "application/pdf" });
+    setFile(sample);
+    analyze(sample);
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      {/* Marketplace Pre-selection Alert */}
-      {tenderIdParam && (
-        <div className="mb-6 bg-blue-950/40 border border-blue-500/30 rounded-2xl p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="bg-blue-500/20 text-blue-400 font-bold text-xs px-2.5 py-0.5 rounded-full border border-blue-500/30">
-                Selected from Marketplace
-              </span>
-              <span className="text-xs font-mono text-slate-400">{tenderIdParam}</span>
-            </div>
-            <h3 className="text-white font-bold text-base">{tenderTitleParam || "Target Tender for Evaluation"}</h3>
+    <PageShell>
+      <PageHeader
+        eyebrow="Module 1 · Bid eligibility"
+        title="Tender Intelligence & Compliance Auditor"
+        subtitle="Extracts eligibility criteria from the tender PDF and verifies them against your Udyam profile with a deterministic, zero-hallucination rule engine."
+        statutes={["Rule 173(i) GFR 2017", "MSMED Act 2006", "Public Procurement Policy for MSEs Order 2012"]}
+      />
+
+      {tenderId && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-sky-900/60 bg-sky-950/20 px-4 py-2.5">
+          <div className="flex min-w-0 items-center gap-2">
+            <Pill tone="info" mono>
+              {tenderId}
+            </Pill>
+            <span className="truncate text-xs text-slate-300">{tenderTitle ?? "Selected marketplace tender"}</span>
           </div>
-          <button
-            onClick={handleRunDemoSample}
-            disabled={isAnalyzing}
-            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-blue-600/30 whitespace-nowrap"
-          >
-            {isAnalyzing ? "Analyzing..." : "⚡ Quick Test on this Tender"}
-          </button>
+          <Btn onClick={runSample} disabled={busy} icon={<Play className="h-3 w-3" />}>
+            Run on sample document
+          </Btn>
         </div>
       )}
 
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold leading-7 text-white sm:text-3xl sm:truncate">
-          Bid Eligibility & Compliance Auditor
-        </h2>
-        <p className="mt-1 text-sm text-slate-400">
-          Upload any official GeM Tender PDF. Our 10-Agent Neurosymbolic pipeline will calculate your exact Compliance Distance Score (CDS) with zero hallucination.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column: Upload & Profile Context */}
-        <div className="lg:col-span-1 space-y-6">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm">
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">
-              Step 1: Upload Tender PDF
-            </h3>
-            <FileDropzone onFileSelect={handleFileUpload} />
-          </div>
-
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                MSME Profile Context
-              </h3>
-              <span className="text-xs text-emerald-400 font-semibold">Active Session</span>
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[360px_minmax(0,1fr)]">
+        <div className="space-y-4">
+          <Panel title="Tender document">
+            <div className="space-y-3">
+              <PdfDropzone label="Tender PDF" file={file} onFile={setFile} disabled={busy} />
+              <Btn variant="primary" className="w-full" disabled={!file || busy} onClick={() => analyze(file)} icon={<FileSearch className="h-3.5 w-3.5" />}>
+                {busy ? "Analysing…" : "Run compliance audit"}
+              </Btn>
             </div>
-            
-            {profile ? (
-              <dl className="space-y-3 text-sm">
-                <div className="flex justify-between border-b border-slate-800/80 pb-2.5">
-                  <dt className="text-slate-500">Company</dt>
-                  <dd className="text-slate-200 font-medium text-right line-clamp-1">{profile.companyName}</dd>
+          </Panel>
+
+          <Panel title="Bidder profile" subtitle="Source: Udyam registration / local session">
+            <dl className="divide-y divide-slate-800/70 text-xs">
+              {[
+                ["Enterprise", profile.companyName],
+                ["Udyam No.", profile.udyam],
+                ["Turnover", formatINR(profile.turnover, true)],
+                ["Experience", `${profile.experience} yrs`],
+                ["MSE status", profile.isRegisteredMSME ? "Registered" : "Not registered"],
+              ].map(([k, v]) => (
+                <div key={k} className="flex justify-between gap-3 py-2">
+                  <dt className="text-slate-500">{k}</dt>
+                  <dd className="truncate text-right font-mono text-slate-200">{v}</dd>
                 </div>
-                <div className="flex justify-between border-b border-slate-800/80 pb-2.5">
-                  <dt className="text-slate-500">Udyam No.</dt>
-                  <dd className="text-slate-200 font-mono text-xs">{profile.udyam || "UDYAM-TN-01-0012345"}</dd>
-                </div>
-                <div className="flex justify-between border-b border-slate-800/80 pb-2.5">
-                  <dt className="text-slate-500">Turnover</dt>
-                  <dd className="text-emerald-400 font-bold font-mono">₹ {(profile.turnover || 4850000).toLocaleString()}</dd>
-                </div>
-                <div className="flex justify-between pb-1">
-                  <dt className="text-slate-500">Experience</dt>
-                  <dd className="text-slate-200 font-medium">{profile.experience || 5} Years</dd>
-                </div>
-              </dl>
-            ) : (
-              <p className="text-sm text-slate-500 italic">No profile loaded. Please login.</p>
-            )}
-          </div>
+              ))}
+            </dl>
+          </Panel>
         </div>
 
-        {/* Right Column: AI Analysis Results */}
-        <div className="lg:col-span-2">
-          {isAnalyzing ? (
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-12 shadow-sm flex flex-col items-center justify-center min-h-[440px]">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-6"></div>
-              <h3 className="text-lg font-bold text-white mb-2">Neurosymbolic Pipeline Running</h3>
-              <p className="text-sm text-slate-400 text-center max-w-sm leading-relaxed">
-                1. Extracting PDF text with PyMuPDF...<br/>
-                2. Dense RAG chunking & vector filtering...<br/>
-                3. Gemini structured parameter extraction...<br/>
-                4. Deterministic Python Symbolic Verifier...
-              </p>
-            </div>
-          ) : error ? (
-            <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6 shadow-sm">
-              <h3 className="text-sm font-semibold text-red-400 uppercase tracking-wider mb-2">Analysis Error</h3>
-              <p className="text-sm text-slate-300">{error}</p>
-            </div>
-          ) : report ? (
-            <ComplianceReport report={report} />
-          ) : (
-            <div className="bg-slate-900 border border-slate-800 border-dashed rounded-2xl p-12 shadow-sm flex flex-col items-center justify-center min-h-[440px]">
-              <div className="w-16 h-16 bg-slate-800/60 rounded-full flex items-center justify-center text-slate-500 mb-4">
-                📄
+        <div className="min-w-0">
+          {busy ? (
+            <Panel>
+              <div className="flex min-h-[320px] flex-col items-center justify-center gap-3">
+                <Spinner label="Running 6-node pipeline" />
+                <p className="text-[11.5px] text-slate-500">PyMuPDF → Ephemeral RAG → Gemini extraction → Symbolic verifier → Simplifier → Scheme discoverer</p>
               </div>
-              <h3 className="text-lg font-bold text-white">Waiting for Tender Document</h3>
-              <p className="text-sm text-slate-400 mt-1 max-w-md text-center">
-                Drag and drop a government tender PDF on the left, or select a bid from the Marketplace to view complete AI compliance results.
-              </p>
-            </div>
+            </Panel>
+          ) : error ? (
+            <ErrorNotice message={error} onRetry={file ? () => analyze(file) : undefined} />
+          ) : report ? (
+            <>
+              {latency !== null && <div className="mb-2 font-mono text-[11px] text-slate-500">HTTP 200 · {latency} ms</div>}
+              <ComplianceReport report={report} />
+            </>
+          ) : (
+            <EmptyState
+              icon={<FileSearch className="h-8 w-8" />}
+              title="No tender analysed"
+              body="Upload a tender PDF (max 10 MB) to see the compliance gauge, per-clause verdicts with page citations and the Hindi summary."
+            />
           )}
         </div>
       </div>
-    </div>
+    </PageShell>
   );
 }
 
 export default function Dashboard() {
   return (
-    <Suspense fallback={
-      <div className="flex justify-center items-center py-24">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    }>
+    <Suspense fallback={<PageShell><Spinner label="Loading…" /></PageShell>}>
       <DashboardContent />
     </Suspense>
   );

@@ -1,21 +1,22 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const plexMono = IBM_Plex_Mono({
+  variable: "--font-plex-mono",
   subsets: ["latin"],
+  weight: ["400", "500", "600"],
 });
 
 export const metadata: Metadata = {
-  title: "MSME Copilot | AI Procurement System",
-  description: "Neurosymbolic AI assistant for MSME bidding and legal defense.",
+  title: "ProcureGuard-AI | Public Procurement Integrity Suite",
+  description: "MSME bid compliance, statutory payment recovery and government procurement-integrity analytics.",
 };
 
 export default function RootLayout({
@@ -24,15 +25,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased bg-slate-950 text-slate-50`}
-    >
-      <body className="min-h-full flex flex-col">
+    <html lang="en" className={`${inter.variable} ${plexMono.variable} h-full antialiased bg-slate-950 text-slate-200`}>
+      <body className="flex min-h-full flex-col bg-slate-950">
         <Navbar />
-        <main className="flex-1">
-          {children}
-        </main>
+        <main className="flex-1">{children}</main>
       </body>
     </html>
   );

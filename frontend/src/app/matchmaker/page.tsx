@@ -1,201 +1,211 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import MatchmakerCard from '@/components/MatchmakerCard';
-import JvCard from '@/components/JvCard';
-import RegisterMsmeModal from '@/components/RegisterMsmeModal';
+import { useCallback, useEffect, useState } from "react";
+import { Handshake, UserPlus } from "lucide-react";
+import RegisterMsmeModal from "@/components/RegisterMsmeModal";
+import { Btn, EmptyState, ErrorNotice, JsonDrawer, PageHeader, PageShell, Panel, Pill, Spinner, Stat, scoreTone } from "@/components/ui";
+import { apiRequest, errorMessage, formatLakhs, type MatchmakerDashboard, type MsmeSummary } from "@/lib/api";
 
 export default function MatchmakerPage() {
-  const [msmeId, setMsmeId] = useState('M101');
-  const [msmeList, setMsmeList] = useState<{ msme_id: string; company_name: string }[]>([]);
-  const [isRegisterOpen, setIsRegisterOpen] = useState(false);
-  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [msmeId, setMsmeId] = useState("M101");
+  const [msmes, setMsmes] = useState<MsmeSummary[]>([]);
+  const [data, setData] = useState<MatchmakerDashboard | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [registerOpen, setRegisterOpen] = useState(false);
 
-  const fetchMsmes = async () => {
+  const loadMsmes = useCallback(async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/msme/all');
-      if (res.ok) {
-        const data = await res.json();
-        setMsmeList(data);
-      }
-    } catch (e) {
-      console.warn('Could not load MSME list');
+      const res = await apiRequest<MsmeSummary[]>("/api/msme/all");
+      setMsmes(res.data);
+    } catch {
+      /* selector falls back to the default id; dashboard load reports connectivity errors */
     }
-  };
+  }, []);
 
-  const fetchDashboard = async (id: string) => {
+  const load = useCallback(async (id: string) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`http://localhost:8000/api/matchmaker/${id}`);
-      if (!response.ok) {
-        throw new Error("Failed to load matchmaker data");
-      }
-      const data = await response.json();
-      setDashboardData(data);
-    } catch (err: any) {
-      setError(err.message);
+      const res = await apiRequest<MatchmakerDashboard>(`/api/matchmaker/${encodeURIComponent(id)}`);
+      setData(res.data);
+    } catch (e) {
+      setData(null);
+      setError(errorMessage(e));
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchMsmes();
-    fetchDashboard(msmeId);
   }, []);
 
-  const handleSelectChange = (newId: string) => {
-    setMsmeId(newId);
-    fetchDashboard(newId);
+  useEffect(() => {
+    loadMsmes();
+    load("M101");
+  }, [loadMsmes, load]);
+
+  const select = (id: string) => {
+    setMsmeId(id);
+    load(id);
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (msmeId) fetchDashboard(msmeId);
-  };
+  const lead = data?.msme_profile;
 
   return (
-    <div className="min-h-screen bg-[#0F172A] text-white pt-24 pb-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        <header className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-white/10 pb-8">
-          <div>
-            <h1 className="text-4xl font-black mb-2 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-400">
-              Proactive Matchmaker
-            </h1>
-            <p className="text-gray-400">AI-powered Tender Discovery & Consortium Builder</p>
-          </div>
-          
-          <div className="flex flex-wrap items-center gap-3">
+    <PageShell>
+      <PageHeader
+        eyebrow="Module 2 · Matchmaker"
+        title="Solo & Consortium Matchmaker"
+        subtitle="Ranks open tenders you qualify for alone and, where turnover or certification gaps block you, assembles a joint-venture partner that closes the gap."
+        statutes={["GFR 2017 Rule 173(i)", "Public Procurement Policy for MSEs Order 2012"]}
+        actions={
+          <>
             <select
+              aria-label="Enterprise"
               value={msmeId}
-              onChange={(e) => handleSelectChange(e.target.value)}
-              className="bg-white/10 border border-white/20 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+              onChange={(e) => select(e.target.value)}
+              className="rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-100 outline-none focus:border-sky-600"
             >
-              {msmeList.length > 0 ? (
-                msmeList.map((m) => (
-                  <option key={m.msme_id} value={m.msme_id} className="bg-slate-900 text-white">
-                    {m.msme_id} - {m.company_name}
-                  </option>
-                ))
-              ) : (
-                <option value="M101" className="bg-slate-900">M101 - Apex Tools</option>
-              )}
+              {msmes.length === 0 && <option value={msmeId}>{msmeId}</option>}
+              {msmes.map((m) => (
+                <option key={m.msme_id} value={m.msme_id}>
+                  {m.msme_id} · {m.company_name}
+                </option>
+              ))}
             </select>
+            <Btn onClick={() => setRegisterOpen(true)} icon={<UserPlus className="h-3 w-3" />}>
+              Register MSME
+            </Btn>
+          </>
+        }
+      />
 
-            <button
-              onClick={() => setIsRegisterOpen(true)}
-              className="bg-emerald-600/30 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/50 px-3 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-1"
-            >
-              <span>+</span>
-              <span>Register MSME</span>
-            </button>
+      {loading && <Spinner label="Matching tenders…" />}
+      {error && <ErrorNotice message={error} onRetry={() => load(msmeId)} />}
+
+      {data && lead && !loading && (
+        <>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <Stat label="Enterprise" value={<span className="block truncate text-base">{lead.company_name}</span>} hint={lead.sector} />
+            <Stat label="Turnover" value={formatLakhs(lead.annual_turnover_lakhs)} hint={`${lead.years_of_experience} yrs experience`} />
+            <Stat label="Solo-qualified" value={data.solo_opportunities.count} tone="pass" hint="tenders" />
+            <Stat label="Consortium-salvaged" value={data.joint_venture_opportunities.count} tone="info" hint="tenders via JV" />
           </div>
-        </header>
 
-        {loading && (
-          <div className="flex justify-center items-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
-          </div>
-        )}
+          <Panel title="Solo-qualified tenders" subtitle="Sector, turnover, experience and certification all satisfied" flush>
+            {data.solo_opportunities.count === 0 ? (
+              <p className="px-4 py-6 text-center text-xs text-slate-500">No tenders match the current profile on a solo basis.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[720px] text-left text-xs">
+                  <thead className="border-b border-slate-800 bg-slate-950/50 text-[10.5px] uppercase tracking-wider text-slate-500">
+                    <tr>
+                      <th className="px-4 py-2 font-medium">Tender ID</th>
+                      <th className="px-4 py-2 font-medium">Title</th>
+                      <th className="px-4 py-2 font-medium">Category</th>
+                      <th className="px-4 py-2 text-right font-medium">Min. turnover</th>
+                      <th className="px-4 py-2 text-right font-medium">Min. exp.</th>
+                      <th className="px-4 py-2 text-right font-medium">Match</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/70">
+                    {[...data.solo_opportunities.tenders]
+                      .sort((a, b) => b.score - a.score)
+                      .map(({ tender, score }) => (
+                        <tr key={tender.tender_id} className="hover:bg-slate-800/30">
+                          <td className="px-4 py-2 font-mono text-slate-400">{tender.tender_id}</td>
+                          <td className="px-4 py-2 font-medium text-slate-100">{tender.title}</td>
+                          <td className="px-4 py-2 text-slate-400">{tender.category}</td>
+                          <td className="px-4 py-2 text-right font-mono tabular-nums text-slate-300">{formatLakhs(tender.min_turnover_lakhs)}</td>
+                          <td className="px-4 py-2 text-right font-mono tabular-nums text-slate-300">
+                            {tender.min_experience_years != null ? `${tender.min_experience_years} yr` : "—"}
+                          </td>
+                          <td className="px-4 py-2 text-right">
+                            <Pill tone={scoreTone(score)} mono>
+                              {score}%
+                            </Pill>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Panel>
 
-        {error && (
-          <div className="bg-red-500/10 border border-red-500/50 rounded-xl p-4 text-red-400 text-center mb-8">
-            {error}
-          </div>
-        )}
+          <Panel title="Joint-venture consortium builder" subtitle="Tenders beyond solo qualification, bridged by a complementary partner in the same sector">
+            {data.joint_venture_opportunities.count === 0 ? (
+              <p className="py-4 text-center text-xs text-slate-500">No viable consortium partner found for the current gaps.</p>
+            ) : (
+              <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                {data.joint_venture_opportunities.tenders.map(({ tender, recommended_partner: p }) => {
+                  const ownShare = Math.min(100, Math.max(0, (lead.annual_turnover_lakhs / p.combined_turnover) * 100));
+                  return (
+                    <article key={tender.tender_id} className="rounded-md border border-slate-800 bg-slate-950/50">
+                      <header className="flex items-start justify-between gap-3 border-b border-slate-800 px-4 py-2.5">
+                        <div className="min-w-0">
+                          <div className="truncate text-[13px] font-semibold text-slate-100">{tender.title}</div>
+                          <div className="font-mono text-[11px] text-slate-500">
+                            {tender.tender_id} · requires {formatLakhs(tender.min_turnover_lakhs)}
+                          </div>
+                        </div>
+                        <Pill tone="info" icon={<Handshake className="h-3 w-3" />}>
+                          Consortium
+                        </Pill>
+                      </header>
+                      <dl className="grid grid-cols-2 gap-x-4 gap-y-2 px-4 py-3 text-xs">
+                        <div>
+                          <dt className="text-[10.5px] uppercase tracking-wider text-slate-500">Lead partner</dt>
+                          <dd className="mt-0.5 text-slate-200">{lead.company_name}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-[10.5px] uppercase tracking-wider text-slate-500">Co-partner</dt>
+                          <dd className="mt-0.5 text-slate-200">
+                            {p.partner_name} <span className="font-mono text-slate-500">({p.partner_id})</span>
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-[10.5px] uppercase tracking-wider text-slate-500">Combined turnover</dt>
+                          <dd className="mt-0.5 font-mono tabular-nums text-emerald-300">{formatLakhs(p.combined_turnover)}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-[10.5px] uppercase tracking-wider text-slate-500">Fit score</dt>
+                          <dd className="mt-0.5 font-mono tabular-nums text-slate-200">{p.match_score}%</dd>
+                        </div>
+                        <div className="col-span-2">
+                          <dt className="mb-1 flex justify-between text-[10.5px] uppercase tracking-wider text-slate-500">
+                            <span>Indicative equity (turnover-weighted)</span>
+                            <span className="font-mono normal-case text-slate-400">
+                              {ownShare.toFixed(1)} / {(100 - ownShare).toFixed(1)}
+                            </span>
+                          </dt>
+                          <dd className="flex h-1.5 overflow-hidden rounded bg-slate-800">
+                            <span className="bg-sky-500" style={{ width: `${ownShare}%` }} />
+                            <span className="bg-slate-500" style={{ width: `${100 - ownShare}%` }} />
+                          </dd>
+                        </div>
+                      </dl>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </Panel>
 
-        {dashboardData && !loading && (
-          <div className="space-y-12 animate-fade-in-up">
-            
-            {/* Profile Overview */}
-            <div className="bg-gradient-to-r from-indigo-900/30 to-blue-900/30 border border-indigo-500/20 rounded-2xl p-6 flex flex-wrap gap-8 items-center">
-              <div>
-                <p className="text-sm text-gray-400">Active Profile</p>
-                <h2 className="text-2xl font-bold text-white">{dashboardData.msme_profile.company_name}</h2>
-              </div>
-              <div className="h-10 w-px bg-white/10 hidden md:block"></div>
-              <div>
-                <p className="text-sm text-gray-400">Sector</p>
-                <p className="font-bold text-white">{dashboardData.msme_profile.sector}</p>
-              </div>
-              <div className="h-10 w-px bg-white/10 hidden md:block"></div>
-              <div>
-                <p className="text-sm text-gray-400">Turnover</p>
-                <p className="font-bold text-white">₹{dashboardData.msme_profile.annual_turnover_lakhs} Lakhs</p>
-              </div>
-              <div className="h-10 w-px bg-white/10 hidden md:block"></div>
-              <div>
-                <p className="text-sm text-gray-400">Experience</p>
-                <p className="font-bold text-white">{dashboardData.msme_profile.years_of_experience} Years</p>
-              </div>
-            </div>
+          <JsonDrawer title={`GET /api/matchmaker/${msmeId}`} data={data} filename={`matchmaker-${msmeId}.json`} />
+        </>
+      )}
 
-            {/* Solo Opportunities */}
-            <section>
-              <div className="flex items-center gap-3 mb-6">
-                <h2 className="text-2xl font-bold">Solo Opportunities</h2>
-                <span className="bg-indigo-500/20 text-indigo-400 font-bold px-3 py-1 rounded-full text-sm border border-indigo-500/30">
-                  {dashboardData.solo_opportunities.count} Matches
-                </span>
-              </div>
-              
-              {dashboardData.solo_opportunities.count > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {dashboardData.solo_opportunities.tenders.map((item: any, idx: number) => (
-                    <MatchmakerCard key={idx} tender={item.tender} score={item.score} />
-                  ))}
-                </div>
-              ) : (
-                <div className="bg-white/5 border border-white/10 rounded-xl p-8 text-center text-gray-400">
-                  No solo tenders matched your exact profile.
-                </div>
-              )}
-            </section>
-
-            {/* Consortium / JV Opportunities */}
-            <section>
-              <div className="flex items-center gap-3 mb-6">
-                <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-400">
-                  Consortium Builder (Joint Ventures)
-                </h2>
-                <span className="bg-purple-500/20 text-purple-400 font-bold px-3 py-1 rounded-full text-sm border border-purple-500/30">
-                  {dashboardData.joint_venture_opportunities.count} Salvaged
-                </span>
-              </div>
-              
-              <p className="text-gray-400 mb-6 max-w-3xl">
-                These are highly lucrative tenders that you failed to qualify for alone. However, our AI has found a perfect partner company in our database to bridge your gap.
-              </p>
-              
-              {dashboardData.joint_venture_opportunities.count > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {dashboardData.joint_venture_opportunities.tenders.map((item: any, idx: number) => (
-                    <JvCard key={idx} tender={item.tender} partner={item.recommended_partner} />
-                  ))}
-                </div>
-              ) : (
-                <div className="bg-white/5 border border-white/10 rounded-xl p-8 text-center text-gray-400">
-                  No Joint Ventures available at this time.
-                </div>
-              )}
-            </section>
-
-          </div>
-        )}
-      </div>
+      {!data && !loading && !error && (
+        <EmptyState icon={<Handshake className="h-8 w-8" />} title="No enterprise loaded" body="Select a registered MSME to compute tender matches." />
+      )}
 
       <RegisterMsmeModal
-        isOpen={isRegisterOpen}
-        onClose={() => setIsRegisterOpen(false)}
-        onSuccess={async (newId) => {
-          await fetchMsmes();
-          setMsmeId(newId);
-          fetchDashboard(newId);
+        isOpen={registerOpen}
+        onClose={() => setRegisterOpen(false)}
+        onSuccess={async (id) => {
+          await loadMsmes();
+          select(id);
         }}
       />
-    </div>
+    </PageShell>
   );
 }

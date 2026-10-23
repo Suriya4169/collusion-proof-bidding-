@@ -26,6 +26,8 @@ This document is the **official, production-grade OpenAPI / Swagger reference ma
 └──────────────────────────────────────────┴─────────────────────────────┘
 ```
 
+> **Note:** sections 3, 4, 7 and 10 predate the implementation. Where they differ from `/docs`, the live OpenAPI schema and `docs/UNIFIED_PROJECT_MANUAL.md` (section 4) are authoritative.
+
 👉 **Live Interactive Swagger UI:** Available in your browser at `http://localhost:8000/docs`  
 👉 **ReDoc Interactive Documentation:** Available at `http://localhost:8000/redoc`
 
@@ -349,12 +351,89 @@ This document is the **official, production-grade OpenAPI / Swagger reference ma
 
 ## 9. Machine-to-Machine (M2M) Sovereign Ingestion Gateway
 
-### `POST /api/m2m/sync-tender`
-* **Controller:** `Machine-to-Machine (M2M) Sovereign Gateway`
-* **Headers:** `X-API-KEY: pg_live_sovereign_secret_key_2026`
-* **Purpose:** Server-to-server webhook allowing the GeM / CPPP portal to automatically push newly published RFPs directly into ProcureGuard-AI.
+* **Controller:** `Machine-to-Machine (M2M) Sovereign Gateway` (`backend/src/api/routes/m2m.py`)
+* **Base path:** `/api/m2m/v1`
+* **Authentication:** every endpoint requires the header `X-ProcureGuard-Key: <M2M_MASTER_KEY>`. The expected value comes from the `M2M_MASTER_KEY` environment variable.
+  * header missing → `401 Unauthorized` (`Missing M2M API Key header: 'X-ProcureGuard-Key'`)
+  * header present but wrong → `403 Forbidden` (`Invalid or unauthorized M2M API Key.`)
+* **Frontend screen:** `/m2m-gateway` (Government Auditor Suite)
+
+### `POST /api/m2m/v1/tenders/push`
+* **Purpose:** server-to-server webhook allowing the GeM / CPPP portal to push a newly published tender directly into ProcureGuard-AI.
+* **Content-Type:** `application/json`
+
+#### Request body (`M2MTenderPushRequest`):
+```json
+{
+  "tender_id": "GEM/2026/B/9991234",
+  "title": "Automated Procurement of Critical Server Blades",
+  "department": "Ministry of Electronics and Information Technology",
+  "category": "IT Services",
+  "estimated_value_inr": "₹ 4.5 Crores",
+  "emd_amount_inr": 150000.0,
+  "min_turnover_lakhs": 350.0,
+  "min_experience_years": 3,
+  "allows_startup_exemption": true,
+  "submission_deadline": "2026-12-15"
+}
+```
+Only `tender_id` and `title` are required; the remaining fields default as shown above.
+
+#### Response (`201 Created`):
+```json
+{
+  "status": "SUCCESS",
+  "message": "Tender GEM/2026/B/9991234 pushed and registered successfully via M2M gateway.",
+  "tender": { "tender_id": "GEM/2026/B/9991234", "status": "Active" }
+}
+```
+If the `tender_id` already exists the call is idempotent and returns `"status": "EXISTS"` with the stored tender.
+
+#### Example:
+```bash
+curl -X POST http://localhost:8000/api/m2m/v1/tenders/push   -H "Content-Type: application/json"   -H "X-ProcureGuard-Key: $M2M_MASTER_KEY"   -d '{"tender_id":"GEM/2026/B/9991234","title":"Automated Procurement of Critical Server Blades"}'
+```
 
 ---
+
+### `GET /api/m2m/v1/compliance/{tender_id}/{msme_id}`
+* **Purpose:** lets a procurement auditor's system query the eligibility of an MSME for a tender.
+* **Response (`200 OK`):**
+```json
+{
+  "m2m_audit_timestamp": "2026-10-23T09:30:00",
+  "tender_id": "GEM/2026/B/9991234",
+  "msme_id": "M101",
+  "is_eligible": true,
+  "turnover_check":   { "required_lakhs": 350.0, "actual_lakhs": 420.0, "passed": true },
+  "experience_check": { "required_years": 3,     "actual_years": 5,     "passed": true },
+  "sovereign_trust_index": 0.88
+}
+```
+* **Errors:** `404` if the tender or the MSME profile does not exist.
+
+---
+
+### `POST /api/m2m/v1/webhooks/subscribe`
+* **Purpose:** registers a callback URL for integrity events.
+* **Request body:**
+```json
+{
+  "callback_url": "https://gem.gov.in/api/webhooks/procureguard-event",
+  "event_types": ["TENDER_ANALYZE_COMPLETED", "CORRIGENDUM_DETECTED"],
+  "secret_token": "secret-gov-token"
+}
+```
+* **Response (`200 OK`):**
+```json
+{
+  "status": "ACTIVE",
+  "message": "Webhook successfully registered for events: TENDER_ANALYZE_COMPLETED, CORRIGENDUM_DETECTED",
+  "target_url": "https://gem.gov.in/api/webhooks/procureguard-event",
+  "subscription_id": "sub_m2m_1a2b3c4d"
+}
+```
+* **Note:** the subscription is acknowledged but not persisted, and outbound event delivery is not implemented yet.
 
 ## 10. Asynchronous Task Queue (Background Workers)
 
@@ -415,3 +494,5 @@ This document is the **official, production-grade OpenAPI / Swagger reference ma
 | `/matchmaker` | Solo & JV Consortium | `GET /api/matchmaker/{id}` | Module 2 |
 | `/documents` | Readiness Vault | `GET /api/documents/{id}` | Vault |
 | `/login` | Access Control | `POST /api/auth/login` | RBAC |
+| `/m2m-gateway` | M2M Console | `/api/m2m/v1/*` | Sovereign Gateway |
+| `/agent-pipeline` | LangGraph Visualizer | `POST /api/orchestrator/analyze` | Orchestrator |

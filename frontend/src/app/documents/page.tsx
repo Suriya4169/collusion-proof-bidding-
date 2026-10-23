@@ -1,575 +1,345 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
-import RegisterMsmeModal from '@/components/RegisterMsmeModal';
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { BellRing, FileCheck2, Trash2, UserPlus } from "lucide-react";
+import RegisterMsmeModal from "@/components/RegisterMsmeModal";
+import { Btn, ErrorNotice, Gauge, JsonDrawer, PageHeader, PageShell, Panel, PdfDropzone, Pill, Spinner, scoreTone, type Tone } from "@/components/ui";
+import { apiRequest, errorMessage, type MsmeSummary, type VaultData, type VaultDoc } from "@/lib/api";
 
-interface VaultDoc {
-  id: number | null;
-  document_type: string;
-  file_name: string | null;
-  upload_date: string | null;
-  expiry_date: string | null;
-  status: string;
-  is_uploaded: boolean;
+/** Mirrors STANDARD_CHECKLIST in backend/src/api/routes/documents.py. */
+const CHECKLIST_META: Record<string, { mandatory: boolean; authority: string }> = {
+  "Udyam Certificate": { mandatory: true, authority: "Ministry of MSME" },
+  "GST Registration": { mandatory: true, authority: "CBIC · GSTIN (REG-06)" },
+  "PAN Card": { mandatory: true, authority: "Income Tax Dept." },
+  "ISO 9001": { mandatory: false, authority: "QMS certification body" },
+  "Last 3 Years ITR": { mandatory: true, authority: "CA-audited returns" },
+  "Solvency Certificate": { mandatory: false, authority: "Scheduled bank · ≤ 6 months old" },
+  "Bank Statement": { mandatory: true, authority: "Scheduled bank · last 6 months" },
+};
+const DOC_TYPES = Object.keys(CHECKLIST_META);
+const EXPIRY_WARN_DAYS = 90;
+const MS_DAY = 86_400_000;
+
+type ExpiryState = "valid" | "expiring" | "expired" | "perpetual" | "missing";
+
+interface Row {
+  doc: VaultDoc;
+  state: ExpiryState;
+  daysLeft: number | null;
 }
 
-interface VaultData {
-  msme_id: string;
-  readiness_score: number;
-  total_documents_uploaded: number;
-  total_required: number;
-  vault_documents: VaultDoc[];
-  missing_documents: string[];
-  proactive_alerts: string[];
+function classify(doc: VaultDoc, now: number): Row {
+  if (!doc.is_uploaded) return { doc, state: "missing", daysLeft: null };
+  const t = doc.expiry_date ? Date.parse(doc.expiry_date) : Number.NaN;
+  if (Number.isNaN(t)) return { doc, state: "perpetual", daysLeft: null };
+  const daysLeft = Math.ceil((t - now) / MS_DAY);
+  return { doc, state: daysLeft < 0 ? "expired" : daysLeft <= EXPIRY_WARN_DAYS ? "expiring" : "valid", daysLeft };
 }
 
-interface MSMEItem {
-  msme_id: string;
-  company_name: string;
-  sector: string;
-}
+const STATE_VIEW: Record<ExpiryState, { tone: Tone; label: string }> = {
+  valid: { tone: "pass", label: "VALID" },
+  perpetual: { tone: "pass", label: "NO EXPIRY" },
+  expiring: { tone: "warn", label: "EXPIRING" },
+  expired: { tone: "fail", label: "EXPIRED" },
+  missing: { tone: "fail", label: "MISSING" },
+};
 
 function VaultContent() {
-  const searchParams = useSearchParams();
-  const initialId = searchParams.get('msme_id') || 'M101';
-
-  const [msmeId, setMsmeId] = useState(initialId);
-  const [msmeList, setMsmeList] = useState<MSMEItem[]>([]);
-  const [isRegisterOpen, setIsRegisterOpen] = useState(false);
-  const [vaultData, setVaultData] = useState<VaultData | null>(null);
+  const params = useSearchParams();
+  const [msmeId, setMsmeId] = useState(params.get("msme_id") ?? "M101");
+  const [msmes, setMsmes] = useState<MsmeSummary[]>([]);
+  const [vault, setVault] = useState<VaultData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [registerOpen, setRegisterOpen] = useState(false);
 
-  // Form states
-  const [uploadMode, setUploadMode] = useState<'ai' | 'manual'>('ai');
-  const [selectedType, setSelectedType] = useState('ISO 9001');
-  const [expiryDate, setExpiryDate] = useState('');
-  const [fileToUpload, setFileToUpload] = useState<File | null>(null);
+  const [mode, setMode] = useState<"ai" | "manual">("ai");
+  const [docType, setDocType] = useState(DOC_TYPES[3]);
+  const [expiry, setExpiry] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<number | null>(null);
+  const [now, setNow] = useState(0);
 
-  // Fetch dynamic MSME list
-  const fetchMsmes = async () => {
+  useEffect(() => setNow(Date.now()), []);
+
+  const loadMsmes = useCallback(async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/msme/all');
-      if (res.ok) {
-        const data = await res.json();
-        setMsmeList(data);
-      }
-    } catch (e) {
-      console.warn('Could not fetch dynamic MSME list');
+      setMsmes((await apiRequest<MsmeSummary[]>("/api/msme/all")).data);
+    } catch {
+      /* selector keeps its default; vault load reports connectivity errors */
     }
-  };
+  }, []);
 
-  const fetchVault = async (id: string) => {
+  const loadVault = useCallback(async (id: string) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`http://localhost:8000/api/documents/${id}`);
-      if (!res.ok) {
-        throw new Error(`Failed to load vault for ${id}`);
-      }
-      const data: VaultData = await res.json();
-      setVaultData(data);
-    } catch (err: any) {
-      setError(err.message || 'Error fetching document vault');
+      setVault((await apiRequest<VaultData>(`/api/documents/${encodeURIComponent(id)}`)).data);
+    } catch (e) {
+      setVault(null);
+      setError(errorMessage(e));
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchMsmes();
   }, []);
 
   useEffect(() => {
-    fetchVault(msmeId);
-  }, [msmeId]);
+    loadMsmes();
+  }, [loadMsmes]);
+  useEffect(() => {
+    loadVault(msmeId);
+  }, [msmeId, loadVault]);
 
-  // Autonomous AI OCR Scan & Verify
-  const handleAutoVerify = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!fileToUpload) {
-      setError('Please select a certificate file to scan.');
-      return;
-    }
+  const rows = useMemo(() => (vault && now ? vault.vault_documents.map((d) => classify(d, now)) : []), [vault, now]);
+  const renewals = rows.filter((r) => r.state === "expiring" || r.state === "expired");
 
+  const submit = async () => {
+    if (!file) return;
     setUploading(true);
     setError(null);
-    setSuccessMsg(null);
-
+    setNotice(null);
+    const form = new FormData();
+    form.append("file", file);
+    form.append("msme_id", msmeId);
     try {
-      const formData = new FormData();
-      formData.append('file', fileToUpload);
-      formData.append('msme_id', msmeId);
-
-      const res = await fetch('http://localhost:8000/api/documents/extract-and-verify', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.detail || 'Autonomous verification failed.');
+      if (mode === "ai") {
+        const res = await apiRequest<{ detected_type: string; extracted_expiry: string; readiness_score: number }>("/api/documents/extract-and-verify", {
+          method: "POST",
+          body: form,
+        });
+        setNotice(`Classified as ${res.data.detected_type} (expiry: ${res.data.extracted_expiry}). Readiness is now ${res.data.readiness_score}%.`);
+      } else {
+        form.append("document_type", docType);
+        form.append("expiry_date", expiry || "No Expiry");
+        const res = await apiRequest<{ message?: string }>("/api/documents/upload", { method: "POST", body: form });
+        setNotice(res.data.message ?? "Document stored in vault.");
+        setExpiry("");
       }
-
-      setSuccessMsg(`✓ AI Verified: Detected as ${data.detected_type} (Expiry: ${data.extracted_expiry}) - Readiness Score is now ${data.readiness_score}%!`);
-      setFileToUpload(null);
-      await fetchVault(msmeId);
-    } catch (err: any) {
-      setError(err.message || 'Auto-verification error');
+      setFile(null);
+      await loadVault(msmeId);
+    } catch (e) {
+      setError(errorMessage(e));
     } finally {
       setUploading(false);
     }
   };
 
-  const handleUpload = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (uploadMode === 'ai') {
-      return handleAutoVerify(e);
-    }
-
-    if (!fileToUpload) {
-      setError('Please select a file to upload');
-      return;
-    }
-
-    setUploading(true);
-    setError(null);
-    setSuccessMsg(null);
-
+  const remove = async (id: number) => {
     try {
-      const formData = new FormData();
-      formData.append('file', fileToUpload);
-      formData.append('msme_id', msmeId);
-      formData.append('document_type', selectedType);
-      formData.append('expiry_date', expiryDate || 'No Expiry');
-
-      const res = await fetch('http://localhost:8000/api/documents/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.detail || 'Failed to upload document');
-      }
-
-      const result = await res.json();
-      setSuccessMsg(result.message || 'Document uploaded successfully');
-      setFileToUpload(null);
-      setExpiryDate('');
-      // Refresh vault
-      await fetchVault(msmeId);
-    } catch (err: any) {
-      setError(err.message || 'Upload error');
-    } finally {
-      setUploading(false);
+      await apiRequest(`/api/documents/${id}`, { method: "DELETE" });
+      setPendingDelete(null);
+      await loadVault(msmeId);
+    } catch (e) {
+      setError(errorMessage(e));
     }
   };
 
-  const handleDelete = async (docId: number) => {
-    if (!confirm('Are you sure you want to remove this document from the vault?')) return;
-    try {
-      const res = await fetch(`http://localhost:8000/api/documents/${docId}`, {
-        method: 'DELETE',
-      });
-      if (!res.ok) throw new Error('Failed to delete document');
-      await fetchVault(msmeId);
-    } catch (err: any) {
-      alert(err.message || 'Error deleting document');
-    }
-  };
-
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return 'text-emerald-400 border-emerald-500 bg-emerald-500/10';
-    if (score >= 60) return 'text-amber-400 border-amber-500 bg-amber-500/10';
-    return 'text-rose-400 border-rose-500 bg-rose-500/10';
-  };
+  const score = vault?.readiness_score ?? 0;
 
   return (
-    <div className="min-h-screen bg-[#0F172A] text-slate-100 pt-24 pb-16 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto space-y-8">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20 mb-3">
-              <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
-              Procurement Readiness Engine
-            </div>
-            <h1 className="text-3xl font-extrabold text-white tracking-tight sm:text-4xl">
-              Digital Document Vault
-            </h1>
-            <p className="mt-1 text-slate-400 text-sm">
-              Manage GeM compliance certificates, track statutory expiry dates, and optimize bid eligibility.
-            </p>
-          </div>
-
-          {/* MSME Switcher */}
-          <div className="flex items-center gap-3 bg-slate-800/80 p-2 rounded-xl border border-slate-700">
-            <label htmlFor="msmeSelect" className="text-xs font-semibold text-slate-400 uppercase tracking-wider pl-2">
-              Active MSME:
-            </label>
+    <PageShell>
+      <PageHeader
+        eyebrow="Vault · Readiness audit"
+        title="Procurement Readiness Vault"
+        subtitle="Statutory registrations and financial documents that GeM / CPPP tenders require, with expiry tracking and renewal alerts."
+        statutes={["Udyam (MSMED Act 2006 §8)", "CGST Act 2017 §25", "GFR 2017 Rule 173"]}
+        actions={
+          <>
             <select
-              id="msmeSelect"
+              aria-label="Enterprise"
               value={msmeId}
               onChange={(e) => setMsmeId(e.target.value)}
-              className="bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-100 outline-none focus:border-sky-600"
             >
-              {msmeList.length > 0 ? (
-                msmeList.map((m) => (
-                  <option key={m.msme_id} value={m.msme_id}>
-                    {m.msme_id} - {m.company_name}
-                  </option>
-                ))
-              ) : (
-                <>
-                  <option value="M101">M101 - Apex Precision Tools</option>
-                  <option value="M102">M102 - BioClean Waste Systems</option>
-                  <option value="M103">M103 - DataCraft Analytics</option>
-                  <option value="M104">M104 - EcoEnergy Solar Tech</option>
-                  <option value="M105">M105 - Precision Hydraulics</option>
-                </>
-              )}
+              {msmes.length === 0 && <option value={msmeId}>{msmeId}</option>}
+              {msmes.map((m) => (
+                <option key={m.msme_id} value={m.msme_id}>
+                  {m.msme_id} · {m.company_name}
+                </option>
+              ))}
             </select>
-            <button
-              onClick={() => setIsRegisterOpen(true)}
-              className="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition"
-              title="Register a new enterprise"
-            >
-              + New
-            </button>
-          </div>
+            <Btn onClick={() => setRegisterOpen(true)} icon={<UserPlus className="h-3 w-3" />}>
+              Register MSME
+            </Btn>
+          </>
+        }
+      />
+
+      {error && <ErrorNotice message={error} onRetry={() => loadVault(msmeId)} />}
+      {notice && (
+        <div role="status" className="rounded-md border border-emerald-900/70 bg-emerald-950/30 px-4 py-2.5 text-xs text-emerald-300">
+          {notice}
         </div>
+      )}
 
-        {/* Proactive Alerts Banner */}
-        {vaultData?.proactive_alerts && vaultData.proactive_alerts.length > 0 && (
-          <div className="space-y-2">
-            {vaultData.proactive_alerts.map((alert, idx) => (
-              <div
-                key={idx}
-                className="bg-amber-500/10 border border-amber-500/30 text-amber-200 px-4 py-3 rounded-xl flex items-center justify-between text-sm shadow-lg shadow-amber-950/20"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-lg">⚡</span>
-                  <span>{alert}</span>
-                </div>
-                <span className="text-xs font-semibold uppercase px-2 py-1 rounded bg-amber-500/20 text-amber-300">
-                  Govt Subsidy Eligible
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Readiness Overview Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Main Score Card */}
-          <div className="bg-slate-800/50 border border-slate-700/80 rounded-2xl p-6 flex flex-col justify-between backdrop-blur-sm">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Readiness Score</p>
-                <h3 className="text-sm text-slate-300 mt-0.5">Government Tender Eligibility</h3>
-              </div>
-              <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${getScoreColor(vaultData?.readiness_score || 0)}`}>
-                {(vaultData?.readiness_score || 0) >= 70 ? 'High Tier' : 'Needs Action'}
-              </span>
-            </div>
-
-            <div className="my-6 flex items-baseline gap-3">
-              <span className="text-5xl font-black text-white tracking-tight">
-                {vaultData ? `${vaultData.readiness_score}%` : '--'}
-              </span>
-              <span className="text-slate-400 text-sm">
-                ({vaultData?.total_documents_uploaded || 0} of {vaultData?.total_required || 7} verified)
-              </span>
-            </div>
-
-            <div className="w-full bg-slate-700/60 rounded-full h-2.5 overflow-hidden">
-              <div
-                className="bg-gradient-to-r from-blue-500 to-emerald-400 h-2.5 rounded-full transition-all duration-700"
-                style={{ width: `${vaultData?.readiness_score || 0}%` }}
-              ></div>
-            </div>
-          </div>
-
-          {/* Missing Checklist Card */}
-          <div className="bg-slate-800/50 border border-slate-700/80 rounded-2xl p-6 flex flex-col justify-between backdrop-blur-sm">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Missing Mandatory Docs</p>
-              <h3 className="text-sm text-slate-300 mt-0.5">Disqualification Risk Factors</h3>
-            </div>
-
-            <div className="my-4">
-              {vaultData?.missing_documents && vaultData.missing_documents.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {vaultData.missing_documents.map((doc, idx) => (
-                    <span key={idx} className="bg-rose-500/10 text-rose-300 border border-rose-500/20 text-xs px-2.5 py-1 rounded-lg font-medium">
-                      ✕ {doc}
+      {loading && !vault ? (
+        <Spinner label="Loading vault…" />
+      ) : (
+        vault && (
+          <>
+            {renewals.length > 0 && (
+              <div className="space-y-2">
+                {renewals.map(({ doc, state, daysLeft }) => (
+                  <div
+                    key={doc.document_type}
+                    className={`flex flex-wrap items-center gap-3 rounded-md border px-4 py-2.5 text-xs ${
+                      state === "expired" ? "border-rose-900/70 bg-rose-950/30 text-rose-200" : "border-amber-900/70 bg-amber-950/25 text-amber-200"
+                    }`}
+                  >
+                    <BellRing className="h-4 w-4 shrink-0" />
+                    <span className="min-w-0 flex-1">
+                      <span className="font-medium">{doc.document_type}</span>{" "}
+                      {state === "expired" ? `expired ${Math.abs(daysLeft ?? 0)} days ago` : `expires in ${daysLeft} days`} ({doc.expiry_date}). Renew before the next bid submission; bids with lapsed
+                      certificates are summarily rejected.
                     </span>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-emerald-400 text-sm font-semibold flex items-center gap-2">
-                  <span>✓</span> All mandatory documents present!
-                </p>
-              )}
-            </div>
-
-            <p className="text-xs text-slate-400">
-              Upload missing items to unlock auto-bidding and higher consortium trust scores.
-            </p>
-          </div>
-
-          {/* Quick Upload Form Card */}
-          <div className="bg-slate-800/50 border border-slate-700/80 rounded-2xl p-6 backdrop-blur-sm flex flex-col justify-between">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Upload to Vault</p>
-                <h3 className="text-sm text-slate-300 mt-0.5">Encrypt & Verify with AI</h3>
-              </div>
-              <div className="flex bg-slate-900 p-0.5 rounded-lg border border-slate-700 text-[11px] font-semibold">
-                <button
-                  type="button"
-                  onClick={() => setUploadMode('ai')}
-                  className={`px-2.5 py-1 rounded-md transition ${uploadMode === 'ai' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}
-                >
-                  ⚡ AI Scan
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setUploadMode('manual')}
-                  className={`px-2.5 py-1 rounded-md transition ${uploadMode === 'manual' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'}`}
-                >
-                  Manual
-                </button>
-              </div>
-            </div>
-
-            <form onSubmit={handleUpload} className="mt-4 space-y-3">
-              {uploadMode === 'ai' ? (
-                <div>
-                  <label className="flex flex-col items-center justify-center border-2 border-dashed border-slate-700 hover:border-blue-500/70 bg-slate-900/60 rounded-xl p-4 cursor-pointer transition text-center">
-                    <span className="text-2xl mb-1">🤖</span>
-                    <span className="text-xs font-medium text-slate-200">
-                      {fileToUpload ? fileToUpload.name : 'Select or Drop any Certificate PDF'}
-                    </span>
-                    <span className="text-[10px] text-slate-400 mt-0.5">
-                      AI auto-detects GST, Udyam, ISO, PAN, ITR & Expiry
-                    </span>
-                    <input
-                      type="file"
-                      className="hidden"
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files[0]) {
-                          setFileToUpload(e.target.files[0]);
-                        }
-                      }}
-                    />
-                  </label>
-                </div>
-              ) : (
-                <>
-                  <div>
-                    <select
-                      value={selectedType}
-                      onChange={(e) => setSelectedType(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    >
-                      <option value="ISO 9001">ISO 9001 (Quality Standard)</option>
-                      <option value="Solvency Certificate">Solvency Certificate (Bank)</option>
-                      <option value="Bank Statement">Bank Statement (6 Months)</option>
-                      <option value="Udyam Certificate">Udyam Registration</option>
-                      <option value="GST Registration">GST Registration (REG-06)</option>
-                      <option value="PAN Card">PAN Card</option>
-                      <option value="Last 3 Years ITR">Audited Balance Sheet / ITR</option>
-                    </select>
                   </div>
+                ))}
+              </div>
+            )}
 
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      type="date"
-                      value={expiryDate}
-                      onChange={(e) => setExpiryDate(e.target.value)}
-                      placeholder="Expiry date"
-                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                    <label className="flex items-center justify-center bg-slate-700/60 hover:bg-slate-700 text-white rounded-lg px-2 py-1.5 text-xs cursor-pointer border border-slate-600 transition truncate">
-                      <span>{fileToUpload ? fileToUpload.name.slice(0, 10) + '...' : 'Select File'}</span>
-                      <input
-                        type="file"
-                        className="hidden"
-                        onChange={(e) => {
-                          if (e.target.files && e.target.files[0]) {
-                            setFileToUpload(e.target.files[0]);
-                          }
-                        }}
-                      />
-                    </label>
+            <div className="grid grid-cols-1 gap-5 xl:grid-cols-[300px_minmax(0,1fr)_340px]">
+              <Panel title="Procurement readiness">
+                <div className="flex flex-col items-center gap-3">
+                  <Gauge value={score} tone={scoreTone(score)} label="Readiness" />
+                  <div className="font-mono text-xs text-slate-400">
+                    {vault.total_documents_uploaded} of {vault.total_required} documents on file
                   </div>
-                </>
-              )}
+                  <Pill tone={scoreTone(score)}>{score >= 80 ? "BID-READY" : score >= 60 ? "GAPS PRESENT" : "HIGH DISQUALIFICATION RISK"}</Pill>
+                </div>
+              </Panel>
 
-              <button
-                type="submit"
-                disabled={uploading || !fileToUpload}
-                className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 text-white font-semibold py-2 rounded-lg text-xs transition flex items-center justify-center gap-2 shadow-lg shadow-blue-900/30"
+              <Panel title="Statutory certificate checklist" subtitle={`Status as of ${now ? new Date(now).toLocaleDateString("en-IN") : "—"} · warning window ${EXPIRY_WARN_DAYS} days`} flush>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[600px] text-left text-xs">
+                    <thead className="border-b border-slate-800 bg-slate-950/50 text-[10.5px] uppercase tracking-wider text-slate-500">
+                      <tr>
+                        <th className="px-4 py-2 font-medium">Document</th>
+                        <th className="px-4 py-2 font-medium">Status</th>
+                        <th className="px-4 py-2 font-medium">Expiry</th>
+                        <th className="px-4 py-2 font-medium">File</th>
+                        <th className="px-4 py-2" />
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/70">
+                      {rows.map(({ doc, state, daysLeft }) => {
+                        const meta = CHECKLIST_META[doc.document_type];
+                        const view = STATE_VIEW[state];
+                        return (
+                          <tr key={doc.document_type} className="hover:bg-slate-800/30">
+                            <td className="px-4 py-2.5">
+                              <div className="flex items-center gap-2 font-medium text-slate-100">
+                                {doc.document_type}
+                                {meta?.mandatory && <span className="rounded border border-slate-700 px-1 font-mono text-[9.5px] text-slate-400">MANDATORY</span>}
+                              </div>
+                              <div className="text-[11px] text-slate-500">{meta?.authority}</div>
+                            </td>
+                            <td className="px-4 py-2.5">
+                              <Pill tone={view.tone} mono>
+                                {view.label}
+                              </Pill>
+                            </td>
+                            <td className="px-4 py-2.5 font-mono tabular-nums text-slate-300">
+                              {doc.is_uploaded ? doc.expiry_date ?? "—" : "—"}
+                              {daysLeft !== null && <span className="ml-1.5 text-[10.5px] text-slate-500">({daysLeft}d)</span>}
+                            </td>
+                            <td className="max-w-[180px] truncate px-4 py-2.5 font-mono text-[11px] text-slate-500">{doc.file_name ?? "—"}</td>
+                            <td className="px-4 py-2.5 text-right">
+                              {doc.id !== null &&
+                                (pendingDelete === doc.id ? (
+                                  <span className="inline-flex gap-1">
+                                    <Btn variant="danger" onClick={() => remove(doc.id as number)}>
+                                      Confirm
+                                    </Btn>
+                                    <Btn onClick={() => setPendingDelete(null)}>Cancel</Btn>
+                                  </span>
+                                ) : (
+                                  <button aria-label={`Remove ${doc.document_type}`} onClick={() => setPendingDelete(doc.id)} className="rounded p-1 text-slate-500 hover:bg-slate-800 hover:text-rose-400">
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                ))}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </Panel>
+
+              <Panel
+                title="Add document"
+                actions={
+                  <div className="flex rounded border border-slate-800 bg-slate-950 p-0.5 text-[11px]">
+                    {(
+                      [
+                        ["ai", "Auto-classify"],
+                        ["manual", "Manual"],
+                      ] as const
+                    ).map(([k, label]) => (
+                      <button key={k} onClick={() => setMode(k)} aria-pressed={mode === k} className={`rounded-sm px-2 py-0.5 font-medium ${mode === k ? "bg-slate-700/70 text-slate-50" : "text-slate-400"}`}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                }
               >
-                {uploading ? (
-                  <span>{uploadMode === 'ai' ? 'Running OCR & AI Verification...' : 'Encrypting & Storing...'}</span>
-                ) : (
-                  <>
-                    <span>{uploadMode === 'ai' ? '⚡ Autonomous AI Scan & Verify' : 'Upload Document ↑'}</span>
-                  </>
-                )}
-              </button>
-            </form>
-          </div>
-        </div>
-
-        {/* Message Feedback */}
-        {error && (
-          <div className="bg-rose-500/10 border border-rose-500/20 text-rose-300 px-4 py-3 rounded-xl text-sm">
-            {error}
-          </div>
-        )}
-        {successMsg && (
-          <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 px-4 py-3 rounded-xl text-sm">
-            {successMsg}
-          </div>
-        )}
-
-        {/* Vault Document Table */}
-        <div className="bg-slate-800/40 border border-slate-700/80 rounded-2xl overflow-hidden backdrop-blur-sm">
-          <div className="px-6 py-4 border-b border-slate-700 flex justify-between items-center bg-slate-800/60">
-            <div>
-              <h2 className="text-base font-bold text-white">Standard GeM Procurement Checklist</h2>
-              <p className="text-xs text-slate-400">Real-time status of required compliance certificates</p>
+                <div className="space-y-3">
+                  <PdfDropzone label="Certificate PDF" file={file} onFile={setFile} disabled={uploading} />
+                  {mode === "manual" ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className="text-[11px] text-slate-500">
+                        Type
+                        <select value={docType} onChange={(e) => setDocType(e.target.value)} className="mt-1 w-full rounded border border-slate-700 bg-slate-950/60 px-2 py-1.5 text-xs text-slate-100">
+                          {DOC_TYPES.map((t) => (
+                            <option key={t}>{t}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="text-[11px] text-slate-500">
+                        Expiry
+                        <input type="date" value={expiry} onChange={(e) => setExpiry(e.target.value)} className="mt-1 w-full rounded border border-slate-700 bg-slate-950/60 px-2 py-1.5 font-mono text-xs text-slate-100" />
+                      </label>
+                    </div>
+                  ) : (
+                    <p className="text-[11px] leading-relaxed text-slate-500">Document type, certificate number and expiry are read from the PDF text; the readiness gauge updates automatically.</p>
+                  )}
+                  <Btn variant="primary" className="w-full" disabled={!file || uploading} onClick={submit} icon={<FileCheck2 className="h-3.5 w-3.5" />}>
+                    {uploading ? "Processing…" : mode === "ai" ? "Verify & store" : "Store in vault"}
+                  </Btn>
+                </div>
+              </Panel>
             </div>
-            <span className="text-xs text-slate-400">
-              Synced with MSME SQLite Database
-            </span>
-          </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-300">
-              <thead className="bg-slate-900/60 text-xs uppercase font-semibold text-slate-400 border-b border-slate-800">
-                <tr>
-                  <th className="px-6 py-3.5">Document Name</th>
-                  <th className="px-6 py-3.5">File Reference</th>
-                  <th className="px-6 py-3.5">Uploaded Date</th>
-                  <th className="px-6 py-3.5">Expiry Date</th>
-                  <th className="px-6 py-3.5">Audit Status</th>
-                  <th className="px-6 py-3.5 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/80">
-                {vaultData?.vault_documents.map((doc, idx) => {
-                  const isExpiring = doc.status === 'EXPIRING_SOON';
-                  const isValid = doc.status === 'VALID';
-                  const isMissing = !doc.is_uploaded;
-
-                  return (
-                    <tr key={idx} className="hover:bg-slate-800/30 transition-colors">
-                      <td className="px-6 py-4 font-medium text-white flex items-center gap-3">
-                        <span className={`w-2 h-2 rounded-full ${isValid ? 'bg-emerald-400' : isExpiring ? 'bg-amber-400 animate-ping' : 'bg-rose-400'}`}></span>
-                        <div>
-                          <span>{doc.document_type}</span>
-                          <span className="block text-[11px] text-slate-500">
-                            {doc.document_type === 'ISO 9001' || doc.document_type === 'Solvency Certificate' ? 'Optional Merit' : 'Mandatory Statutory'}
-                          </span>
-                        </div>
-                      </td>
-
-                      <td className="px-6 py-4 font-mono text-xs text-slate-300">
-                        {doc.file_name ? (
-                          <span className="bg-slate-800 px-2 py-1 rounded border border-slate-700">
-                            📄 {doc.file_name}
-                          </span>
-                        ) : (
-                          <span className="text-slate-500 italic">No file attached</span>
-                        )}
-                      </td>
-
-                      <td className="px-6 py-4 text-xs text-slate-400">
-                        {doc.upload_date || '--'}
-                      </td>
-
-                      <td className="px-6 py-4 text-xs">
-                        {doc.expiry_date ? (
-                          <span className={isExpiring ? 'text-amber-400 font-bold' : 'text-slate-300'}>
-                            {doc.expiry_date}
-                          </span>
-                        ) : (
-                          <span className="text-slate-500">Permanent</span>
-                        )}
-                      </td>
-
-                      <td className="px-6 py-4">
-                        {isValid && (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                            ✓ Valid
-                          </span>
-                        )}
-                        {isExpiring && (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                            ⚠️ Expiring Soon
-                          </span>
-                        )}
-                        {isMissing && (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20">
-                            ✕ Missing
-                          </span>
-                        )}
-                      </td>
-
-                      <td className="px-6 py-4 text-right">
-                        {doc.id ? (
-                          <button
-                            onClick={() => handleDelete(doc.id!)}
-                            className="text-xs text-rose-400 hover:text-rose-300 hover:underline transition font-medium"
-                          >
-                            Delete
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => {
-                              setSelectedType(doc.document_type);
-                              window.scrollTo({ top: 0, behavior: 'smooth' });
-                            }}
-                            className="text-xs text-blue-400 hover:text-blue-300 hover:underline transition font-medium"
-                          >
-                            Upload Now
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+            <JsonDrawer title={`GET /api/documents/${msmeId}`} data={vault} filename={`vault-${msmeId}.json`} />
+          </>
+        )
+      )}
 
       <RegisterMsmeModal
-        isOpen={isRegisterOpen}
-        onClose={() => setIsRegisterOpen(false)}
-        onSuccess={async (newId) => {
-          await fetchMsmes();
-          setMsmeId(newId);
+        isOpen={registerOpen}
+        onClose={() => setRegisterOpen(false)}
+        onSuccess={async (id) => {
+          await loadMsmes();
+          setMsmeId(id);
         }}
       />
-    </div>
+    </PageShell>
   );
 }
 
-export default function DocumentVaultPage() {
+export default function DocumentsPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#0F172A] text-white p-24">Loading Document Vault...</div>}>
+    <Suspense
+      fallback={
+        <PageShell>
+          <Spinner label="Loading…" />
+        </PageShell>
+      }
+    >
       <VaultContent />
     </Suspense>
   );
 }
-

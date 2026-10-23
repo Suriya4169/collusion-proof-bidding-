@@ -1,304 +1,173 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { CalendarClock, Handshake, Search, Upload } from "lucide-react";
 import UploadTenderModal from "@/components/UploadTenderModal";
+import { Btn, EmptyState, ErrorNotice, PageHeader, PageShell, Panel, Pill, Spinner, inputClass } from "@/components/ui";
+import { ALL_SECTORS, apiRequest, errorMessage, formatINR, formatLakhs, type Tender, type TenderFilters, type TendersResponse } from "@/lib/api";
 
-interface Tender {
-  tender_id: string;
-  title: string;
-  department: string;
-  category: string;
-  min_turnover_lakhs: number;
-  min_experience_years: number;
-  emd_amount_inr: number;
-  estimated_value_inr: string;
-  submission_deadline: string;
-  allows_startup_exemption: boolean;
-  status: string;
+const DEFAULT_FILTERS: TenderFilters = { category: ALL_SECTORS, search: "" };
+
+function daysUntil(iso: string): number | null {
+  const t = Date.parse(iso);
+  return Number.isNaN(t) ? null : Math.ceil((t - Date.now()) / 86_400_000);
 }
 
 export default function Marketplace() {
   const [tenders, setTenders] = useState<Tender[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>("All");
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [loading, setLoading] = useState<boolean>(true);
-  const [isUploadOpen, setIsUploadOpen] = useState<boolean>(false);
+  const [sectors, setSectors] = useState<string[]>([]);
+  const [filters, setFilters] = useState<TenderFilters>(DEFAULT_FILTERS);
+  const [searchDraft, setSearchDraft] = useState("");
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [uploadOpen, setUploadOpen] = useState(false);
 
-  const fetchTenders = async (category: string = "All", search: string = "") => {
+  const load = useCallback(async (f: TenderFilters) => {
     setLoading(true);
     setError(null);
+    const q = new URLSearchParams();
+    if (f.category !== ALL_SECTORS) q.set("category", f.category);
+    if (f.search.trim()) q.set("search", f.search.trim());
     try {
-      let url = "http://localhost:8000/api/tenders";
-      const params = new URLSearchParams();
-      if (category && category !== "All") params.append("category", category);
-      if (search.trim()) params.append("search", search.trim());
-
-      if (params.toString()) {
-        url += `?${params.toString()}`;
-      }
-
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`Failed to load tenders: ${response.statusText}`);
-      }
-      const data = await response.json();
-      setTenders(data.tenders || []);
-      if (data.available_categories && data.available_categories.length > 0) {
-        setCategories(["All", ...data.available_categories]);
-      }
-    } catch (err: any) {
-      console.warn("Backend API unavailable, using offline fallback:", err.message);
-      // Resilient fallback for offline testing
-      setTenders([
-        {
-          tender_id: "GEM/2026/B/9292805",
-          title: "Supply of Precision Machined Components for Aerospace Division",
-          department: "Ministry of Defence (HAL)",
-          category: "Manufacturing",
-          min_turnover_lakhs: 250.0,
-          min_experience_years: 3,
-          emd_amount_inr: 50000.0,
-          estimated_value_inr: "₹ 2.5 Crores",
-          submission_deadline: "2026-10-15",
-          allows_startup_exemption: true,
-          status: "Active"
-        },
-        {
-          tender_id: "GEM/2026/B/9394343",
-          title: "Procurement of High-Grade Steel Alloy Sheets (Grade 304)",
-          department: "Ministry of Railways",
-          category: "Raw Materials",
-          min_turnover_lakhs: 120.0,
-          min_experience_years: 2,
-          emd_amount_inr: 25000.0,
-          estimated_value_inr: "₹ 1.2 Crores",
-          submission_deadline: "2026-10-22",
-          allows_startup_exemption: true,
-          status: "Active"
-        },
-        {
-          tender_id: "GEM/2026/B/9472132",
-          title: "Annual Maintenance Contract for IT Infrastructure",
-          department: "Ministry of Finance",
-          category: "IT Services",
-          min_turnover_lakhs: 85.0,
-          min_experience_years: 3,
-          emd_amount_inr: 0.0,
-          estimated_value_inr: "₹ 85 Lakhs",
-          submission_deadline: "2026-11-05",
-          allows_startup_exemption: true,
-          status: "Active"
-        },
-        {
-          tender_id: "GEM/2026/B/9558683",
-          title: "Installation of Solar Panels (50KW) in Government Quarters",
-          department: "Ministry of New and Renewable Energy",
-          category: "Infrastructure",
-          min_turnover_lakhs: 340.0,
-          min_experience_years: 4,
-          emd_amount_inr: 100000.0,
-          estimated_value_inr: "₹ 3.4 Crores",
-          submission_deadline: "2026-11-12",
-          allows_startup_exemption: false,
-          status: "Active"
-        }
-      ]);
-      setCategories(["All", "Manufacturing", "Raw Materials", "IT Services", "Infrastructure"]);
+      const res = await apiRequest<TendersResponse>(`/api/tenders${q.size ? `?${q}` : ""}`);
+      setTenders(res.data.tenders);
+      if (res.data.available_categories.length) setSectors(res.data.available_categories);
+    } catch (e) {
+      setTenders([]);
+      setError(errorMessage(e));
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchTenders(selectedCategory, searchQuery);
-  }, [selectedCategory]);
+    load(filters);
+  }, [filters, load]);
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
+  const apply = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchTenders(selectedCategory, searchQuery);
+    setFilters((f) => ({ ...f, search: searchDraft }));
+  };
+
+  const clear = () => {
+    setSearchDraft("");
+    setFilters(DEFAULT_FILTERS);
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      {/* Header Section */}
-      <div className="md:flex md:items-center md:justify-between mb-8 pb-6 border-b border-slate-800">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3">
-            <span className="bg-blue-600/20 text-blue-400 font-semibold text-xs px-3 py-1 rounded-full border border-blue-500/30">
-              Live GeM Repository
-            </span>
-            <span className="text-slate-400 text-sm">
-              {tenders.length} Active Bids
-            </span>
-          </div>
-          <h1 className="text-3xl font-extrabold text-white sm:text-4xl mt-2 tracking-tight">
-            Government Tender Marketplace
-          </h1>
-          <p className="mt-1 text-sm text-slate-400">
-            Real-time public procurement repository. One-click pass to Neurosymbolic AI eligibility verification.
-          </p>
-        </div>
-        <div className="mt-4 flex gap-3 md:mt-0 md:ml-4">
-          <button
-            onClick={() => setIsUploadOpen(true)}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 transition-colors"
-          >
-            + Upload Custom PDF
-          </button>
-          <Link
-            href="/matchmaker"
-            className="inline-flex items-center px-4 py-2 border border-purple-500/30 rounded-lg shadow-sm text-sm font-semibold text-purple-300 bg-purple-950/40 hover:bg-purple-900/50 transition-colors"
-          >
-            AI Joint Venture Match
-          </Link>
-        </div>
-      </div>
+    <PageShell>
+      <PageHeader
+        eyebrow="GeM / CPPP repository"
+        title="Government Tender Repository"
+        subtitle="Open tenders with eligibility thresholds. Select a tender to run the compliance auditor against your Udyam profile."
+        statutes={["GFR 2017 Rule 173", "Public Procurement Policy for MSEs Order 2012"]}
+        actions={
+          <Btn variant="primary" onClick={() => setUploadOpen(true)} icon={<Upload className="h-3.5 w-3.5" />}>
+            Ingest tender PDF
+          </Btn>
+        }
+      />
 
-      {/* Filter and Search Controls */}
-      <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4 mb-8">
-        {/* Category Filter Pills */}
-        <div className="flex flex-wrap gap-2">
-          {categories.map((cat) => (
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div role="group" aria-label="Sector filter" className="flex flex-wrap gap-1.5">
+          {[ALL_SECTORS, ...sectors].map((s) => (
             <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
-                selectedCategory === cat
-                  ? "bg-blue-600 text-white shadow-md shadow-blue-600/30"
-                  : "bg-slate-900 text-slate-400 hover:text-white border border-slate-800 hover:border-slate-700"
+              key={s}
+              aria-pressed={filters.category === s}
+              onClick={() => setFilters((f) => ({ ...f, category: s }))}
+              className={`rounded border px-2.5 py-1 text-xs font-medium transition-colors ${
+                filters.category === s ? "border-sky-600 bg-sky-600/15 text-sky-200" : "border-slate-800 bg-slate-900 text-slate-400 hover:border-slate-700 hover:text-slate-200"
               }`}
             >
-              {cat}
+              {s}
             </button>
           ))}
         </div>
-
-        {/* Search Input */}
-        <form onSubmit={handleSearchSubmit} className="flex gap-2">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search keyword or ID..."
-            className="bg-slate-900 border border-slate-800 text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500 w-full sm:w-64"
-          />
-          <button
-            type="submit"
-            className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors border border-slate-700"
-          >
+        <form onSubmit={apply} className="flex gap-2">
+          <input aria-label="Search tenders" value={searchDraft} onChange={(e) => setSearchDraft(e.target.value)} placeholder="Keyword, department or bid ID" className={`${inputClass} sm:w-64`} />
+          <Btn type="submit" icon={<Search className="h-3 w-3" />}>
             Search
-          </button>
+          </Btn>
         </form>
       </div>
 
-      {/* Loading Indicator */}
-      {loading && (
-        <div className="flex justify-center items-center py-24">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      {loading && <Spinner label="Loading tenders…" />}
+      {error && <ErrorNotice message={error} onRetry={() => load(filters)} />}
+
+      {!loading && !error && tenders.length === 0 && (
+        <EmptyState icon={<Search className="h-8 w-8" />} title="No tenders match the filters" body="Adjust the sector or keyword, or clear the filters." />
+      )}
+      {!loading && !error && tenders.length === 0 && (filters.category !== ALL_SECTORS || filters.search) && (
+        <div className="text-center">
+          <Btn onClick={clear}>Clear filters</Btn>
         </div>
       )}
 
-      {/* Tender Cards Grid */}
-      {!loading && (
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-2">
-          {tenders.map((tender) => (
-            <div
-              key={tender.tender_id}
-              className="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-lg flex flex-col hover:border-blue-500/50 hover:shadow-blue-500/10 transition-all hover:-translate-y-0.5"
-            >
-              <div className="p-6 flex-1">
-                <div className="flex justify-between items-start gap-4">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                      {tender.status || "Active"}
-                    </span>
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-800 text-slate-300">
-                      {tender.category}
-                    </span>
-                    {tender.allows_startup_exemption && (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-500/10 text-purple-300 border border-purple-500/20">
-                        Startup Exempted
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-xs font-mono text-slate-400 bg-slate-800/60 px-2 py-1 rounded">
-                    {tender.tender_id}
-                  </span>
-                </div>
-
-                <h3 className="mt-4 text-xl font-bold text-white line-clamp-2 leading-snug">
-                  {tender.title}
-                </h3>
-                <p className="mt-1 text-xs text-slate-400 font-medium">
-                  🏛️ {tender.department}
-                </p>
-
-                <div className="mt-6 bg-slate-950/60 rounded-xl p-4 border border-slate-800/80">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
-                    <div>
-                      <span className="text-slate-500 block mb-1">Est. Value</span>
-                      <span className="text-white font-bold">{tender.estimated_value_inr}</span>
+      {!loading && tenders.length > 0 && (
+        <>
+          <div className="font-mono text-[11px] text-slate-500">{tenders.length} active tenders</div>
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            {tenders.map((t) => {
+              const left = daysUntil(t.submission_deadline);
+              return (
+                <Panel key={t.tender_id} flush>
+                  <div className="space-y-3 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <Pill tone="pass">{t.status || "Active"}</Pill>
+                        <Pill>{t.category}</Pill>
+                        {t.allows_startup_exemption && <Pill tone="info">Startup relaxation</Pill>}
+                      </div>
+                      <span className="font-mono text-[11px] text-slate-500">{t.tender_id}</span>
                     </div>
                     <div>
-                      <span className="text-slate-500 block mb-1">Min. Turnover</span>
-                      <span className="text-white font-bold">₹{tender.min_turnover_lakhs} Lakhs</span>
+                      <h3 className="text-[13.5px] font-semibold leading-snug text-slate-100">{t.title}</h3>
+                      <p className="mt-0.5 text-xs text-slate-500">{t.department}</p>
                     </div>
-                    <div>
-                      <span className="text-slate-500 block mb-1">EMD Required</span>
-                      <span className="text-white font-bold">
-                        {tender.emd_amount_inr > 0 ? `₹${tender.emd_amount_inr.toLocaleString()}` : "Exempted"}
-                      </span>
+                    <dl className="grid grid-cols-2 gap-3 rounded border border-slate-800 bg-slate-950/50 p-3 text-xs sm:grid-cols-4">
+                      {[
+                        ["Est. value", t.estimated_value_inr],
+                        ["Min. turnover", formatLakhs(t.min_turnover_lakhs)],
+                        ["EMD", t.emd_amount_inr > 0 ? formatINR(t.emd_amount_inr, true) : "Nil"],
+                        ["Experience", `${t.min_experience_years} yr`],
+                      ].map(([k, v]) => (
+                        <div key={k}>
+                          <dt className="text-[10.5px] uppercase tracking-wider text-slate-500">{k}</dt>
+                          <dd className="mt-0.5 font-mono tabular-nums text-slate-200">{v}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                    <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                      <CalendarClock className="h-3.5 w-3.5" />
+                      Closes <span className="font-mono text-slate-200">{t.submission_deadline}</span>
+                      {left !== null && (
+                        <Pill tone={left < 0 ? "fail" : left <= 7 ? "warn" : "neutral"} mono>
+                          {left < 0 ? "closed" : `${left}d left`}
+                        </Pill>
+                      )}
                     </div>
                   </div>
-                </div>
-
-                <div className="mt-4 flex items-center justify-between text-xs text-slate-400">
-                  <span>📅 Deadline: <strong className="text-slate-200">{tender.submission_deadline}</strong></span>
-                  <span>⏳ Experience: <strong className="text-slate-200">{tender.min_experience_years} Years</strong></span>
-                </div>
-              </div>
-
-              <div className="bg-slate-950/40 px-6 py-4 border-t border-slate-800/80 flex gap-3">
-                <Link
-                  href={`/dashboard?tender_id=${encodeURIComponent(tender.tender_id)}&title=${encodeURIComponent(tender.title)}`}
-                  className="flex-1 flex justify-center items-center py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 transition-colors shadow-md shadow-blue-600/20"
-                >
-                  Analyze with AI Copilot
-                </Link>
-                <Link
-                  href={`/matchmaker?msme_id=M101`}
-                  className="flex items-center justify-center py-2.5 px-3 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 transition-colors border border-slate-700"
-                  title="Check Consortium Joint Venture"
-                >
-                  🤝 JV
-                </Link>
-              </div>
-            </div>
-          ))}
-        </div>
+                  <div className="flex gap-2 border-t border-slate-800/80 px-4 py-2.5">
+                    <Link
+                      href={`/dashboard?tender_id=${encodeURIComponent(t.tender_id)}&title=${encodeURIComponent(t.title)}`}
+                      className="flex-1 rounded border border-sky-600 bg-sky-600 px-3 py-1.5 text-center text-xs font-medium text-white hover:bg-sky-500"
+                    >
+                      Run compliance audit
+                    </Link>
+                    <Link href="/matchmaker" className="inline-flex items-center gap-1.5 rounded border border-slate-700 bg-slate-800/70 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-800">
+                      <Handshake className="h-3.5 w-3.5" />
+                      JV match
+                    </Link>
+                  </div>
+                </Panel>
+              );
+            })}
+          </div>
+        </>
       )}
 
-      {/* Empty State */}
-      {!loading && tenders.length === 0 && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-16 text-center">
-          <p className="text-slate-400 text-lg mb-2">No tenders match your selected filters.</p>
-          <button
-            onClick={() => { setSelectedCategory("All"); setSearchQuery(""); fetchTenders("All", ""); }}
-            className="text-blue-500 hover:underline text-sm font-semibold"
-          >
-            Clear all filters
-          </button>
-        </div>
-      )}
-
-      <UploadTenderModal
-        isOpen={isUploadOpen}
-        onClose={() => setIsUploadOpen(false)}
-        onSuccess={() => fetchTenders(selectedCategory, searchQuery)}
-      />
-    </div>
+      <UploadTenderModal isOpen={uploadOpen} onClose={() => setUploadOpen(false)} onSuccess={() => load(filters)} />
+    </PageShell>
   );
 }

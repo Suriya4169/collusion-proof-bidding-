@@ -1,288 +1,259 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useRef, useState } from "react";
+import { Bot, Fingerprint, RotateCcw } from "lucide-react";
+import { Btn, ErrorNotice, JsonDrawer, PageHeader, PageShell, Panel, Pill, Spinner, Stat, riskTone, toneText, type Tone } from "@/components/ui";
+import { apiRequest, errorMessage, type BehaviorResponse } from "@/lib/api";
 
-interface Deviation {
-  feature: string;
-  z: number;
+const MIN_EVENTS = 5;
+const BOT_INTERVAL_MS = 12;
+const BOT_HOLD_MS = 8;
+const BOT_EVENTS = 45;
+
+interface Capture {
+  intervals: number[];
+  holds: number[];
 }
 
-interface BehaviorResponse {
-  session_id: string;
-  status: string;
-  scoring_mode: string;
-  behavioral_risk_score?: number;
-  risk_category?: string;
-  behavioral_anomaly?: boolean;
-  reliability?: string;
-  events_received: number;
-  events_scored: number;
-  behavioral_evidence: string[];
-  model_version: string;
-  message?: string;
+const RELIABILITY_TONE: Record<string, Tone> = { high: "pass", medium: "warn", low: "fail" };
+
+function mean(a: number[]): number {
+  return a.length ? a.reduce((s, v) => s + v, 0) / a.length : 0;
+}
+function cv(a: number[]): number {
+  const m = mean(a);
+  if (!m) return 0;
+  return Math.sqrt(mean(a.map((v) => (v - m) ** 2))) / m;
+}
+
+function Bars({ values, label, color }: { values: number[]; label: string; color: string }) {
+  const shown = values.slice(-48);
+  const max = Math.max(1, ...shown);
+  return (
+    <div>
+      <div className="mb-1 flex justify-between text-[10.5px] uppercase tracking-wider text-slate-500">
+        <span>{label}</span>
+        <span className="font-mono normal-case">
+          n={values.length} · μ={mean(values).toFixed(1)} ms · CV={cv(values).toFixed(2)}
+        </span>
+      </div>
+      <svg viewBox="0 0 192 40" preserveAspectRatio="none" className="h-14 w-full rounded border border-slate-800 bg-slate-950/60" role="img" aria-label={label}>
+        {shown.map((v, i) => {
+          const h = Math.max(1, (v / max) * 36);
+          return <rect key={i} x={i * 4 + 0.5} y={38 - h} width="3" height={h} fill={color} opacity="0.85" />;
+        })}
+      </svg>
+    </div>
+  );
 }
 
 export default function BotDetectionPage() {
-  const [inputText, setInputText] = useState("");
-  const [analyzing, setAnalyzing] = useState(false);
+  const [text, setText] = useState("");
+  const [capture, setCapture] = useState<Capture>({ intervals: [], holds: [] });
+  const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<BehaviorResponse | null>(null);
+  const [request, setRequest] = useState<unknown>(null);
+  const [latency, setLatency] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Timing tracking refs
-  const keyPressTimestamps = useRef<number[]>([]);
-  const intervals = useRef<number[]>([]);
-  const holdDurations = useRef<number[]>([]);
-  const lastReleaseTime = useRef<number | null>(null);
-  const keyDownMap = useRef<Record<string, number>>({});
+  const downAt = useRef<Record<string, number>>({});
+  const lastRelease = useRef<number | null>(null);
+  const intervalsRef = useRef<number[]>([]);
+  const holdsRef = useRef<number[]>([]);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.repeat) return;
     const now = performance.now();
-    if (!keyDownMap.current[e.code]) {
-      keyDownMap.current[e.code] = now;
-    }
-
-    if (lastReleaseTime.current !== null) {
-      const flight = Math.max(0, now - lastReleaseTime.current);
-      intervals.current.push(Number(flight.toFixed(2)));
-    } else {
-      // First onset latency
-      intervals.current.push(100.0);
-    }
+    downAt.current[e.code] = now;
+    // First keystroke has no preceding release; use a neutral onset latency.
+    intervalsRef.current.push(lastRelease.current === null ? 100 : Number(Math.max(0, now - lastRelease.current).toFixed(2)));
   };
 
-  const handleKeyUp = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const onKeyUp = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     const now = performance.now();
-    lastReleaseTime.current = now;
-
-    const start = keyDownMap.current[e.code];
-    if (start) {
-      const hold = Math.max(1, now - start);
-      holdDurations.current.push(Number(hold.toFixed(2)));
-      delete keyDownMap.current[e.code];
+    lastRelease.current = now;
+    const start = downAt.current[e.code];
+    if (start !== undefined) {
+      holdsRef.current.push(Number(Math.max(1, now - start).toFixed(2)));
+      delete downAt.current[e.code];
     }
+    setCapture({ intervals: [...intervalsRef.current], holds: [...holdsRef.current] });
   };
 
-  const resetCapture = () => {
-    setInputText("");
-    intervals.current = [];
-    holdDurations.current = [];
-    lastReleaseTime.current = null;
-    keyDownMap.current = {};
+  const reset = () => {
+    setText("");
+    intervalsRef.current = [];
+    holdsRef.current = [];
+    lastRelease.current = null;
+    downAt.current = {};
+    setCapture({ intervals: [], holds: [] });
     setResult(null);
+    setRequest(null);
     setError(null);
   };
 
-  const analyzeTyping = async (
-    customIntervals?: number[],
-    customHolds?: number[]
-  ) => {
-    setAnalyzing(true);
-    setError(null);
-
-    const payloadIntervals = customIntervals || intervals.current;
-    const payloadHolds = customHolds || holdDurations.current;
-
-    if (payloadIntervals.length < 5) {
-      setError("Please type at least 15-20 characters to generate sufficient telemetry events.");
-      setAnalyzing(false);
+  const submit = async (intervals: number[], holds: number[]) => {
+    const n = Math.min(intervals.length, holds.length);
+    if (n < MIN_EVENTS) {
+      setError(`Only ${n} timing events captured; at least ${MIN_EVENTS} are required (type roughly 15–20 characters).`);
       return;
     }
-
-    // Align lengths if needed
-    const count = Math.min(payloadIntervals.length, payloadHolds.length);
-    const trimmedIntervals = payloadIntervals.slice(0, count);
-    const trimmedHolds = payloadHolds.slice(0, count);
-
+    const body = { session_id: `bid-session-${Date.now()}`, intervals: intervals.slice(0, n), hold_durations: holds.slice(0, n) };
+    setBusy(true);
+    setError(null);
+    setRequest(body);
     try {
-      const response = await fetch("http://localhost:8000/api/behavior/analyze", {
+      const res = await apiRequest<BehaviorResponse>("/api/behavior/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          session_id: `bid-session-${Date.now()}`,
-          intervals: trimmedIntervals,
-          hold_durations: trimmedHolds,
-        }),
+        body: JSON.stringify(body),
       });
-
-      if (!response.ok) {
-        throw new Error(`Server returned ${response.status}: ${await response.text()}`);
-      }
-
-      const data = await response.json();
-      setResult(data);
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || "Failed to connect to Behavioral Biometrics service.");
+      setResult(res.data);
+      setLatency(res.latencyMs);
+    } catch (e) {
+      setResult(null);
+      setError(errorMessage(e));
     } finally {
-      setAnalyzing(false);
+      setBusy(false);
     }
   };
 
-  // Bot Simulator: Instantaneous automated keystrokes with zero human latency
-  const simulateBotAttack = () => {
-    resetCapture();
-    setInputText("AUTOMATED_BID_BOT_DIRECT_INJECTION_RATE_INR_4800000");
-    // Synthetic robotic timing: exactly 12ms intervals and 8ms holds
-    const botIntervals = Array(45).fill(12.0);
-    const botHolds = Array(45).fill(8.0);
-    analyzeTyping(botIntervals, botHolds);
+  const simulateBot = () => {
+    reset();
+    const intervals = Array<number>(BOT_EVENTS).fill(BOT_INTERVAL_MS);
+    const holds = Array<number>(BOT_EVENTS).fill(BOT_HOLD_MS);
+    setText("AUTOMATED_BID_INJECTION_RATE_INR_4800000");
+    setCapture({ intervals, holds });
+    submit(intervals, holds);
   };
 
+  const score = result?.behavioral_risk_score;
+  const tone = riskTone(score ?? 0);
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10">
-      <div className="max-w-6xl mx-auto space-y-8">
-        
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-800 pb-6">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="px-2.5 py-1 text-xs font-semibold uppercase tracking-wider rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
-                Agent 4 Intelligence
-              </span>
-              <span className="text-xs text-slate-400">Keystroke Flight & Hold Dynamics</span>
-            </div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-white">
-              Behavioral Biometrics & Bot Detection
-            </h1>
-            <p className="text-sm text-slate-400 mt-1">
-              Analyzes micro-timing rhythms of bid submissions to differentiate authentic human bidders from automated script bots without inspecting typed content.
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={simulateBotAttack}
-              className="px-4 py-2 bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 border border-rose-500/40 font-medium rounded-lg text-sm transition-all"
-            >
-              Simulate Script Bot
-            </button>
-            <button
-              onClick={resetCapture}
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium rounded-lg text-sm transition-all"
-            >
+    <PageShell>
+      <PageHeader
+        eyebrow="Agent 4 · Behavioural biometrics"
+        title="Bot Detection & Keystroke Dynamics"
+        subtitle="Scores release-to-press latency and key-hold durations to separate human bidders from scripted submissions. Typed characters are never transmitted — only timing."
+        statutes={["IT Act 2000 §43 / §66", "DPDP Act 2023 — timing-only telemetry", "Competition Act 2002 §3(3)(d)"]}
+        actions={
+          <>
+            <Btn variant="danger" onClick={simulateBot} disabled={busy} icon={<Bot className="h-3.5 w-3.5" />}>
+              Simulate automated script bot ({BOT_INTERVAL_MS} ms)
+            </Btn>
+            <Btn onClick={reset} icon={<RotateCcw className="h-3 w-3" />}>
               Reset
-            </button>
-          </div>
-        </div>
+            </Btn>
+          </>
+        }
+      />
 
-        {error && (
-          <div className="bg-rose-950/40 border border-rose-800/60 rounded-xl p-4 text-rose-300 text-sm">
-            <span className="font-bold">Error:</span> {error}
-          </div>
-        )}
+      {error && <ErrorNotice message={error} />}
 
-        {/* Live Typing Interactive Console */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-white">Live Typing Sandbox</h2>
-            <span className="text-xs font-mono text-slate-400">
-              Captured Keystrokes: {intervals.current.length}
-            </span>
-          </div>
-
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <Panel title="Typing sandbox" subtitle="Compose a bid declaration naturally; capture is local until you submit">
           <textarea
-            rows={4}
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onKeyUp={handleKeyUp}
-            placeholder="Type your bid declaration here naturally (e.g., 'We hereby confirm compliance with all technical specifications for Tender GeM-2026-9292805')..."
-            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-4 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 font-mono"
+            rows={5}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={onKeyDown}
+            onKeyUp={onKeyUp}
+            aria-label="Typing sandbox"
+            placeholder="We hereby confirm compliance with all technical specifications for GeM/2026/B/9292805…"
+            className="w-full resize-y rounded border border-slate-700 bg-slate-950/60 p-3 font-mono text-xs leading-relaxed text-slate-100 outline-none placeholder:text-slate-600 focus:border-sky-600"
           />
-
-          <div className="flex items-center justify-between pt-2">
-            <p className="text-xs text-slate-500">
-              Captures release-to-press flight times and key-down durations. No private credentials or passwords are logged.
-            </p>
-            <button
-              onClick={() => analyzeTyping()}
-              disabled={analyzing}
-              className="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-medium rounded-lg text-sm shadow-lg shadow-cyan-900/30 transition-all"
-            >
-              {analyzing ? "Auditing Timing..." : "Evaluate Biometric Authenticity"}
-            </button>
+          <div className="mt-3 space-y-3">
+            <Bars values={capture.intervals} label="Flight time · release → press (intervals)" color="#38bdf8" />
+            <Bars values={capture.holds} label="Dwell time · key down → up (hold_durations)" color="#a78bfa" />
           </div>
-        </div>
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <span className="font-mono text-[11px] text-slate-500">
+              {Math.min(capture.intervals.length, capture.holds.length)} / {MIN_EVENTS} min events
+            </span>
+            <Btn variant="primary" disabled={busy} onClick={() => submit(intervalsRef.current, holdsRef.current)} icon={<Fingerprint className="h-3.5 w-3.5" />}>
+              {busy ? "Scoring…" : "Score session"}
+            </Btn>
+          </div>
+        </Panel>
 
-        {/* Audit Results Card */}
-        {result && (
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-md space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
-              <div>
-                <span className="text-xs font-mono text-slate-400">Session: {result.session_id}</span>
-                <h3 className="text-xl font-bold text-white mt-1">Biometric Audit Report</h3>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-xs text-slate-400">Model: {result.model_version}</span>
-                <span className={`px-3 py-1 text-xs font-bold font-mono rounded-full uppercase ${
-                  result.risk_category === "HIGH_ANOMALY"
-                    ? "bg-rose-500/20 text-rose-400 border border-rose-500/40"
-                    : result.risk_category === "MODERATE_ANOMALY"
-                    ? "bg-amber-500/20 text-amber-400 border border-amber-500/40"
-                    : "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
-                }`}>
-                  {result.risk_category || "SCORED"}
-                </span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4">
-                <span className="text-xs text-slate-400 font-semibold uppercase">Behavioral Risk Score</span>
-                <div className={`text-4xl font-extrabold mt-2 ${
-                  (result.behavioral_risk_score ?? 0) >= 75
-                    ? "text-rose-400"
-                    : (result.behavioral_risk_score ?? 0) >= 50
-                    ? "text-amber-400"
-                    : "text-emerald-400"
-                }`}>
-                  {result.behavioral_risk_score !== undefined
-                    ? `${result.behavioral_risk_score.toFixed(1)} / 100`
-                    : "N/A"}
+        <div className="space-y-4">
+          {busy && <Spinner label="Scoring timing distribution" />}
+          {result && !busy ? (
+            <>
+              <Panel
+                title="Behavioural risk"
+                subtitle={`${result.session_id}`}
+                actions={
+                  <Pill tone={tone} mono>
+                    {result.risk_category ?? result.status.toUpperCase()}
+                  </Pill>
+                }
+              >
+                <div className="flex items-end justify-between">
+                  <div className={`font-mono text-4xl font-semibold tabular-nums ${toneText[tone]}`}>
+                    {score !== undefined ? score.toFixed(1) : "—"}
+                    <span className="text-base text-slate-500"> / 100</span>
+                  </div>
+                  <div className="text-right text-[11px] text-slate-500">
+                    {result.behavioral_anomaly ? "Flagged for human audit" : "Within genuine-human band"}
+                  </div>
                 </div>
-                <p className="text-xs text-slate-500 mt-1">
-                  {(result.behavioral_risk_score ?? 0) >= 50 ? "Flagged for human audit" : "Within genuine human band"}
-                </p>
-              </div>
-
-              <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4">
-                <span className="text-xs text-slate-400 font-semibold uppercase">Reliability Index</span>
-                <div className="text-4xl font-extrabold text-cyan-400 mt-2 capitalize">
-                  {result.reliability || "Medium"}
-                </div>
-                <p className="text-xs text-slate-500 mt-1">
-                  Based on {result.events_scored} scored timing events
-                </p>
-              </div>
-
-              <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4">
-                <span className="text-xs text-slate-400 font-semibold uppercase">Scoring Mode</span>
-                <div className="text-4xl font-extrabold text-purple-400 mt-2 uppercase">
-                  {result.scoring_mode}
-                </div>
-                <p className="text-xs text-slate-500 mt-1">Dual flight + hold duration</p>
-              </div>
-            </div>
-
-            {/* Explainable Evidence */}
-            {result.behavioral_evidence && result.behavioral_evidence.length > 0 && (
-              <div className="space-y-3">
-                <h4 className="text-sm font-bold text-slate-300 uppercase tracking-wider">
-                  Audit Telemetry Evidence
-                </h4>
-                <ul className="space-y-2">
-                  {result.behavioral_evidence.map((item, idx) => (
-                    <li key={idx} className="flex items-start gap-2 text-xs text-slate-300 bg-slate-950/40 p-3 rounded-lg border border-slate-800">
-                      <span className="text-cyan-400 font-bold">•</span>
-                      <span>{item}</span>
-                    </li>
+                <div className="relative mt-3 h-2.5 rounded bg-slate-800" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={score ?? 0} aria-label="Behavioural risk">
+                  <div
+                    className={`h-full rounded ${tone === "fail" ? "bg-rose-500" : tone === "warn" ? "bg-amber-500" : "bg-emerald-500"}`}
+                    style={{ width: `${score ?? 0}%`, transition: "width 500ms ease" }}
+                  />
+                  {[40, 70].map((t) => (
+                    <span key={t} className="absolute top-[-3px] h-4 w-px bg-slate-500" style={{ left: `${t}%` }} />
                   ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        )}
+                </div>
+                <div className="mt-1 flex justify-between font-mono text-[9.5px] text-slate-600">
+                  <span>0</span>
+                  <span style={{ marginLeft: "28%" }}>40 moderate</span>
+                  <span>70 high</span>
+                  <span>100</span>
+                </div>
+              </Panel>
 
+              <div className="grid grid-cols-3 gap-3">
+                <Stat label="Reliability" value={<span className="capitalize">{result.reliability ?? "n/a"}</span>} tone={RELIABILITY_TONE[result.reliability ?? ""] ?? "neutral"} />
+                <Stat label="Events scored" value={`${result.events_scored}/${result.events_received}`} />
+                <Stat label="Mode" value={<span className="text-base uppercase">{result.scoring_mode}</span>} hint={result.model_version} />
+              </div>
+
+              <Panel title="Forensic telemetry evidence">
+                {result.behavioral_evidence.length ? (
+                  <ul className="space-y-1.5">
+                    {result.behavioral_evidence.map((e, i) => (
+                      <li key={i} className="flex gap-2 rounded border border-slate-800 bg-slate-950/50 px-3 py-2 text-xs leading-relaxed text-slate-300">
+                        <span className="font-mono text-slate-600">{String(i + 1).padStart(2, "0")}</span>
+                        {e}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-xs text-slate-500">{result.message ?? "No anomalous signals reported."}</p>
+                )}
+              </Panel>
+              {latency !== null && <div className="font-mono text-[11px] text-slate-500">HTTP 200 · {latency} ms</div>}
+            </>
+          ) : (
+            !busy && (
+              <Panel>
+                <p className="py-16 text-center text-xs text-slate-500">Type in the sandbox and score the session, or run the automated-bot simulation to see a high-risk verdict.</p>
+              </Panel>
+            )
+          )}
+        </div>
       </div>
-    </div>
+
+      {(request !== null || result !== null) && (
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          {request !== null && <JsonDrawer title="Request · POST /api/behavior/analyze" data={request} filename="behavior-request.json" />}
+          {result && <JsonDrawer title="Response" data={result} filename="behavior-response.json" />}
+        </div>
+      )}
+    </PageShell>
   );
 }

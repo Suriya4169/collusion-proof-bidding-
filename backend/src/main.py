@@ -10,7 +10,8 @@ from src.db.seed import seed_database
 from src.orchestrator.graph import procurement_graph
 
 # Load environment variables
-load_dotenv(dotenv_path="../.env")
+from pathlib import Path
+load_dotenv(dotenv_path=Path(__file__).resolve().parents[2] / ".env")  # repo-root .env, independent of CWD
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
