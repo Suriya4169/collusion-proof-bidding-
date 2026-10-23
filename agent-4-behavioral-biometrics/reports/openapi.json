@@ -1,0 +1,396 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Behavioral Biometrics API (Agent 4)",
+    "description": "Scores keystroke *timing* metadata for the Procurement Integrity Platform and returns a risk signal (0-100) with plain-language evidence. It never receives typed characters, never blocks a bid and never asserts fraud.",
+    "version": "2.0.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Liveness and model readiness",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/behavior/analyze": {
+      "post": {
+        "summary": "Score one session's keystroke timing",
+        "operationId": "analyze_behavior_analyze_post",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BehaviorRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BehaviorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key"
+          },
+          "413": {
+            "description": "Body too large"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "BehaviorRequest": {
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9._:\\-]+$",
+            "title": "Session Id",
+            "description": "Opaque session token. Must not encode personal information."
+          },
+          "intervals": {
+            "items": {
+              "type": "number",
+              "minimum": 0.0
+            },
+            "type": "array",
+            "maxItems": 20000,
+            "minItems": 1,
+            "title": "Intervals",
+            "description": "Per keystroke event: release-to-press latency in ms. The first value is the onset latency (focus to first key press) and is excluded from the timing statistics."
+          },
+          "hold_durations": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number",
+                  "exclusiveMinimum": 0.0
+                },
+                "type": "array",
+                "maxItems": 20000,
+                "minItems": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hold Durations",
+            "description": "Optional, same length as `intervals`: key-down to key-up duration in ms. Enables the full model (recommended)."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "session_id",
+          "intervals"
+        ],
+        "title": "BehaviorRequest",
+        "description": "Timing metadata for one anonymous session. Nothing else is accepted."
+      },
+      "BehaviorResponse": {
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "title": "Session Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "`scored`, or `insufficient_data` when the session is too short to score."
+          },
+          "scoring_mode": {
+            "type": "string",
+            "title": "Scoring Mode",
+            "description": "`full` (hold + flight) or `flight_only`."
+          },
+          "behavioral_risk_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Behavioral Risk Score",
+            "description": "0-100, relative to genuine humans of similar length."
+          },
+          "risk_category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk Category",
+            "description": "LOW_ANOMALY (<50), MODERATE_ANOMALY (50-75), HIGH_ANOMALY (>=75)."
+          },
+          "behavioral_anomaly": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Behavioral Anomaly",
+            "description": "True when the risk score is >= 50."
+          },
+          "anomaly_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anomaly Score"
+          },
+          "operational_threshold": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operational Threshold",
+            "description": "Anomaly-score threshold at this session length (risk 50)."
+          },
+          "reliability": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reliability",
+            "description": "`low` (<30 keystrokes), `medium` (30-99) or `high` (>=100)."
+          },
+          "events_received": {
+            "type": "integer",
+            "title": "Events Received"
+          },
+          "events_scored": {
+            "type": "integer",
+            "title": "Events Scored"
+          },
+          "behavioral_evidence": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Behavioral Evidence"
+          },
+          "top_deviations": {
+            "items": {
+              "$ref": "#/components/schemas/Deviation"
+            },
+            "type": "array",
+            "title": "Top Deviations"
+          },
+          "model_version": {
+            "type": "string",
+            "title": "Model Version"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "session_id",
+          "status",
+          "scoring_mode",
+          "events_received",
+          "events_scored",
+          "behavioral_evidence",
+          "top_deviations",
+          "model_version"
+        ],
+        "title": "BehaviorResponse"
+      },
+      "Deviation": {
+        "properties": {
+          "feature": {
+            "type": "string",
+            "title": "Feature"
+          },
+          "z": {
+            "type": "number",
+            "title": "Z"
+          }
+        },
+        "type": "object",
+        "required": [
+          "feature",
+          "z"
+        ],
+        "title": "Deviation"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "service": {
+            "type": "string",
+            "title": "Service"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "model_version": {
+            "type": "string",
+            "title": "Model Version"
+          },
+          "model_loaded": {
+            "type": "boolean",
+            "title": "Model Loaded"
+          },
+          "min_events": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Min Events"
+          },
+          "max_events_scored": {
+            "type": "integer",
+            "title": "Max Events Scored"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "service",
+          "version",
+          "model_version",
+          "model_loaded",
+          "min_events",
+          "max_events_scored"
+        ],
+        "title": "HealthResponse"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

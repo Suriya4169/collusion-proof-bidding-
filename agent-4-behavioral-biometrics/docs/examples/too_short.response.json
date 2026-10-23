@@ -1,0 +1,17 @@
+{
+  "session_id": "example-too_short",
+  "status": "insufficient_data",
+  "scoring_mode": "full",
+  "events_received": 6,
+  "events_scored": 0,
+  "model_version": "2.0.0+4f20da5f",
+  "behavioral_risk_score": null,
+  "risk_category": null,
+  "behavioral_anomaly": null,
+  "anomaly_score": null,
+  "operational_threshold": null,
+  "reliability": null,
+  "behavioral_evidence": [],
+  "top_deviations": [],
+  "message": "At least 10 keystroke events are needed for a calibrated score; received 6. Send more of the session before scoring."
+}

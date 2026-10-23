@@ -1,0 +1,11 @@
+-r requirements.txt
+
+# Training, evaluation, reports and figures
+scikit-learn==1.7.1
+pandas==2.3.1
+matplotlib==3.10.8
+
+# Tests
+httpx==0.28.1
+pytest==9.1.1
+pytest-asyncio==1.4.0

@@ -1,0 +1,18 @@
+# Local / staging deployment:   copy .env.example to .env, edit it, then   docker compose up --build
+services:
+  agent4:
+    build: .
+    image: agent4-behavioral-biometrics:2.0.0
+    env_file: .env
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    read_only: true            # the service writes nothing to disk
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 256M

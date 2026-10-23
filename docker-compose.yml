@@ -1,0 +1,70 @@
+version: "3.9"
+
+services:
+  # 1. Enterprise PostgreSQL Relational Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: procureguard-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: procureguard
+      POSTGRES_USER: pg_user
+      POSTGRES_PASSWORD: pg_secure_password_2026
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pg_user -d procureguard"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - procureguard-network
+
+  # 2. FastAPI Sovereign AI Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: procureguard-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://pg_user:pg_secure_password_2026@postgres:5432/procureguard
+      JWT_SECRET: procureguard-sovereign-ai-jwt-secret-key-2026
+      M2M_MASTER_KEY: pg_sovereign_m2m_key_prod_2026
+    ports:
+      - "8000:8000"
+    volumes:
+      - vault_data:/app/test_data/vault_storage
+      - upload_data:/app/test_data/uploads
+    networks:
+      - procureguard-network
+
+  # 3. Next.js 16 Dark-Mode Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: procureguard-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      NEXT_PUBLIC_API_URL: http://backend:8000
+    ports:
+      - "3000:3000"
+    networks:
+      - procureguard-network
+
+volumes:
+  postgres_data:
+  vault_data:
+  upload_data:
+
+networks:
+  procureguard-network:
+    driver: bridge

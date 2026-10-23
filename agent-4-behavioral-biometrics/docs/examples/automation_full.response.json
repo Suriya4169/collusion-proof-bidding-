@@ -1,0 +1,33 @@
+{
+  "session_id": "example-automation_full",
+  "status": "scored",
+  "scoring_mode": "full",
+  "events_received": 40,
+  "events_scored": 40,
+  "model_version": "2.0.0+4f20da5f",
+  "behavioral_risk_score": 100.0,
+  "risk_category": "HIGH_ANOMALY",
+  "behavioral_anomaly": true,
+  "anomaly_score": 496.0107,
+  "operational_threshold": 11.2774,
+  "reliability": "medium",
+  "behavioral_evidence": [
+    "unusually_regular_hold_timing",
+    "unusually_regular_flight_timing"
+  ],
+  "top_deviations": [
+    {
+      "feature": "hold_std_ms",
+      "z": -8.54
+    },
+    {
+      "feature": "hold_iqr_ms",
+      "z": -6.86
+    },
+    {
+      "feature": "flight_iqr_ms",
+      "z": -6.48
+    }
+  ],
+  "message": null
+}

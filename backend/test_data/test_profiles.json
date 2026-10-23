@@ -1,0 +1,38 @@
+[
+  {
+    "profile_name": "Weak Micro Enterprise (Should FAIL most)",
+    "user_id": "usr_001",
+    "company_name": "Ravi Small Traders",
+    "udyam_number": "UDYAM-TN-02-0001234",
+    "gst_number": "33AABCR1234A1Z5",
+    "category": "Micro",
+    "annual_turnover": 3500000,
+    "experience_years": 1,
+    "certifications": ["Udyam Registration"],
+    "state": "Tamil Nadu"
+  },
+  {
+    "profile_name": "Medium Enterprise (Should PASS some)",
+    "user_id": "usr_002",
+    "company_name": "Sharma Industries Pvt Ltd",
+    "udyam_number": "UDYAM-MH-01-0012345",
+    "gst_number": "27AABCS1429B1Z5",
+    "category": "Small",
+    "annual_turnover": 20000000,
+    "experience_years": 5,
+    "certifications": ["Udyam Registration", "ISO 9001"],
+    "state": "Maharashtra"
+  },
+  {
+    "profile_name": "Strong Enterprise (Should PASS most)",
+    "user_id": "usr_003",
+    "company_name": "TechBuild Solutions Ltd",
+    "udyam_number": "UDYAM-KA-03-0099999",
+    "gst_number": "29AABCT5678B1Z9",
+    "category": "Medium",
+    "annual_turnover": 150000000,
+    "experience_years": 12,
+    "certifications": ["Udyam Registration", "ISO 9001", "ISO 14001", "MSME Certificate"],
+    "state": "Karnataka"
+  }
+]
