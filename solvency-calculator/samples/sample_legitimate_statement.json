@@ -1,0 +1,119 @@
+{
+  "account_info": {
+    "name": "Shree Balaji Infrastructure Pvt Ltd",
+    "account_number": "002905001923",
+    "bank": "State Bank of India",
+    "period": "01-Oct-2025 to 31-Mar-2026"
+  },
+  "pages": [
+    {
+      "page_number": 1,
+      "opening_balance": 4500000.0,
+      "closing_balance": 5275000.0,
+      "transactions": [
+        {
+          "tx_id": "SBI_101",
+          "date": "2025-10-05",
+          "narration": "NEFT: NHAI RA BILL 12",
+          "credit": 2200000.0,
+          "debit": 0.0,
+          "balance": 6700000.0
+        },
+        {
+          "tx_id": "SBI_102",
+          "date": "2025-10-12",
+          "narration": "RTGS: UltraTech Cement Ltd",
+          "credit": 0.0,
+          "debit": 850000.0,
+          "balance": 5850000.0
+        },
+        {
+          "tx_id": "SBI_103",
+          "date": "2025-10-25",
+          "narration": "SALARY DISBURSEMENT OCT",
+          "credit": 0.0,
+          "debit": 575000.0,
+          "balance": 5275000.0
+        }
+      ]
+    },
+    {
+      "page_number": 2,
+      "opening_balance": 5275000.0,
+      "closing_balance": 6420000.0,
+      "transactions": [
+        {
+          "tx_id": "SBI_104",
+          "date": "2025-11-04",
+          "narration": "CHQ: Tata Steel Supply",
+          "credit": 0.0,
+          "debit": 1100000.0,
+          "balance": 4175000.0
+        },
+        {
+          "tx_id": "SBI_105",
+          "date": "2025-11-20",
+          "narration": "NEFT: PWD RA BILL 04",
+          "credit": 3400000.0,
+          "debit": 0.0,
+          "balance": 7575000.0
+        },
+        {
+          "tx_id": "SBI_106",
+          "date": "2025-11-28",
+          "narration": "SALARY DISBURSEMENT NOV",
+          "credit": 0.0,
+          "debit": 590000.0,
+          "balance": 6985000.0
+        },
+        {
+          "tx_id": "SBI_107",
+          "date": "2025-12-15",
+          "narration": "GST PAYMENT NOV",
+          "credit": 0.0,
+          "debit": 565000.0,
+          "balance": 6420000.0
+        }
+      ]
+    },
+    {
+      "page_number": 3,
+      "opening_balance": 6420000.0,
+      "closing_balance": 6810000.0,
+      "transactions": [
+        {
+          "tx_id": "SBI_108",
+          "date": "2026-01-10",
+          "narration": "DIESEL BULK PURCHASE IOCL",
+          "credit": 0.0,
+          "debit": 720000.0,
+          "balance": 5700000.0
+        },
+        {
+          "tx_id": "SBI_109",
+          "date": "2026-02-05",
+          "narration": "CPWD RUNNING PAYMENT",
+          "credit": 2100000.0,
+          "debit": 0.0,
+          "balance": 7800000.0
+        },
+        {
+          "tx_id": "SBI_110",
+          "date": "2026-02-25",
+          "narration": "SALARY DISBURSEMENT FEB",
+          "credit": 0.0,
+          "debit": 610000.0,
+          "balance": 7190000.0
+        },
+        {
+          "tx_id": "SBI_111",
+          "date": "2026-03-20",
+          "narration": "EQUIPMENT MAINTENANCE L&T",
+          "credit": 0.0,
+          "debit": 380000.0,
+          "balance": 6810000.0
+        }
+      ]
+    }
+  ]
+}
