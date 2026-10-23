@@ -15,7 +15,10 @@ import time
 from pathlib import Path
 from typing import Optional, Tuple
 
-import pymupdf as fitz  # PyMuPDF (new import name)
+try:
+    import pymupdf as fitz  # PyMuPDF >= 1.24.3
+except ImportError:  # older pins (backend uses PyMuPDF==1.24.1) only expose `fitz`
+    import fitz
 import pdfplumber
 
 logger = logging.getLogger("solvency_agent.pdf_extractor")

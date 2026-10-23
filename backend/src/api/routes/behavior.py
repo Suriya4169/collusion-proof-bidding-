@@ -10,6 +10,7 @@ if str(AGENT4_ROOT) not in sys.path:
     sys.path.insert(0, str(AGENT4_ROOT))
 
 from agent4.config import SERVICE_NAME, SERVICE_VERSION, Settings
+from agent4.features import TimingValidationError
 from agent4.scorer import BehaviorScorer
 from agent4.service import BehaviorRequest, BehaviorResponse, HealthResponse
 
@@ -34,8 +35,11 @@ def health():
     return HealthResponse(
         status="ok",
         service=f"{SERVICE_NAME} (integrated)",
+        version=SERVICE_VERSION,
         model_version=scorer.model_version,
-        scoring_modes=list(scorer.models.keys()),
+        model_loaded=True,
+        min_events={m: scorer.min_events(m) for m in ("full", "flight_only")},
+        max_events_scored=scorer.models.bundles["full"].max_events,
     )
 
 @router.post(
@@ -51,12 +55,10 @@ def analyze_behavior(payload: BehaviorRequest):
     """
     try:
         scorer = get_scorer()
-        result = scorer.score_session(
-            session_id=payload.session_id,
-            intervals=payload.intervals,
-            hold_durations=payload.hold_durations,
-        )
-        return BehaviorResponse(**result)
+        result = scorer.score(payload.session_id, payload.intervals, payload.hold_durations)
+        return BehaviorResponse(**result.to_dict())
+    except TimingValidationError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
