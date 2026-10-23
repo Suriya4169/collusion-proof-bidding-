@@ -358,3 +358,124 @@ export interface LoginResponse {
 export type Persona = "vendor" | "auditor";
 export const PERSONA_STORAGE_KEY = "pg_persona";
 export const personaForRole = (role: UserRole): Persona => (role === "msme" ? "vendor" : "auditor");
+
+/** GET /api/notifications/{msme_id}: proactive match alerts pushed by the match notifier daemon */
+export interface MatchNotification {
+  id: number;
+  msme_id: string;
+  tender_id: string;
+  kind: "SOLO" | "JV";
+  score: number;
+  title: string;
+  message: string;
+  partner_name: string | null;
+  created_at: string;
+  read: boolean;
+}
+
+export interface NotificationsResponse {
+  msme_id: string;
+  unread_count: number;
+  notifications: MatchNotification[];
+}
+
+export const ACTIVE_MSME_KEY = "active_msme_id";
+export const DEFAULT_MSME_ID = "M101";
+
+export function getActiveMsmeId(): string {
+  try {
+    return localStorage.getItem(ACTIVE_MSME_KEY) || DEFAULT_MSME_ID;
+  } catch {
+    return DEFAULT_MSME_ID;
+  }
+}
+
+export function setActiveMsmeId(id: string): void {
+  try {
+    localStorage.setItem(ACTIVE_MSME_KEY, id);
+  } catch {
+    /* storage unavailable: the alert bell keeps the default enterprise */
+  }
+  window.dispatchEvent(new Event("pg-active-msme"));
+}
+
+/** Agent 3 · /api/v1/agent/solvency/* */
+export type IntegrityVerdict =
+  | "PASSED (AUTHENTIC_AND_CONSISTENT)"
+  | "SUSPICIOUS (MANIPULATION_FLAGS_RAISED)"
+  | "FAILED (POTENTIAL_TAMPERING_DETECTED)"
+  | "ABSTAINED (INSUFFICIENT_CONFIDENCE)";
+
+export type LedgerRowStatus = "VALID" | "CORRECTED_OCR_ERROR" | "UNEXPLAINABLE_RESIDUAL";
+
+export interface StatementTransaction {
+  tx_id: string;
+  date: string;
+  narration?: string | null;
+  debit: number;
+  credit: number;
+  balance: number;
+}
+
+export interface StatementPage {
+  page_number: number;
+  opening_balance: number;
+  closing_balance: number;
+  transactions: StatementTransaction[];
+}
+
+export interface StatementData {
+  account_info: { name?: string | null; account_number?: string | null; bank?: string | null; period?: string | null };
+  pages: StatementPage[];
+}
+
+export interface SolvencyFlag {
+  type: string;
+  severity: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
+  details: string;
+  tx_id?: string | null;
+  date?: string | null;
+  extra?: Record<string, unknown> | null;
+}
+
+export interface SolvencyAuditRow {
+  tx_id: string;
+  date?: string | null;
+  narration?: string | null;
+  debit: number;
+  credit: number;
+  reported_balance: number;
+  verified_balance: number;
+  expected_balance: number;
+  residual: number;
+  status: LedgerRowStatus | string;
+  note?: string | null;
+}
+
+export interface SolvencyMetrics {
+  time_weighted_avg_balance: number;
+  naive_transaction_avg_balance: number;
+  min_balance: number;
+  max_balance: number;
+  balance_volatility_cv: number;
+  monthly_cashflow_slope: number;
+}
+
+export interface SolvencyAnalysis {
+  analysis_id: string;
+  timestamp: string;
+  agent_version: string;
+  extraction?: { pdf_filename: string; total_pages: number; extraction_method: string; extraction_time_ms: number; llm_structuring_time_ms: number } | null;
+  overall_integrity: IntegrityVerdict;
+  total_transactions_analyzed: number;
+  flags_raised_count: number;
+  flags: SolvencyFlag[];
+  financial_metrics: SolvencyMetrics | null;
+  window_dressing_z_score: number | null;
+  benford_divergence: number | null;
+  audit_rows: SolvencyAuditRow[];
+  account_holder?: string | null;
+  account_number?: string | null;
+  bank_name?: string | null;
+  statement_period?: string | null;
+}

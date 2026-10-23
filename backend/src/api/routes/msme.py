@@ -1,13 +1,14 @@
 import os
 import re
 import shutil
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
+from fastapi import APIRouter, BackgroundTasks, UploadFile, File, Form, HTTPException, Depends
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 
 from src.db.database import get_db
 from src.db.models import MSMEModel, DocumentModel
+from src.services.match_notifier import run_scan_job
 from src.agents.module1.agent1_copilot.pdf_extractor import extract_text_from_pdf
 from src.agents.module1.agent1_copilot.rag_retriever import chunk_text, build_hybrid_retriever, retrieve_relevant_chunks
 from src.agents.module1.agent1_copilot.neural_extractor import extract_rules_with_gemini
@@ -178,7 +179,7 @@ async def get_all_msmes(db: Session = Depends(get_db)):
     summary="Register New Enterprise (Real-World Ingestion)",
     description="Validates real Udyam Registration & GSTIN format, auto-allocates an enterprise ID, and saves to the database."
 )
-async def register_msme(req: MSMERegisterRequest, db: Session = Depends(get_db)):
+async def register_msme(req: MSMERegisterRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     """
     Registers a new MSME with statutory format validation.
     """
@@ -251,6 +252,9 @@ async def register_msme(req: MSMERegisterRequest, db: Session = Depends(get_db))
     ]
     db.add_all(initial_docs)
     db.commit()
+
+    # Full scan: the new enterprise may match open tenders and may also become a JV partner for others.
+    background_tasks.add_task(run_scan_job)
 
     return {
         "message": f"Enterprise '{req.company_name}' successfully registered as {next_id}!",

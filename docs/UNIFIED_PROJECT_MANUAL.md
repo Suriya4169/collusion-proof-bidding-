@@ -91,6 +91,8 @@ The frontend re-derives the month-by-month schedule from the principal in the no
 
 **Matchmaker and consortium builder** (`agent2_matchmaker/`, `GET /api/matchmaker/{msme_id}`): scores every open tender against the MSME on sector (hard gate), turnover, experience and certificates. Startup-exempt tenders bypass turnover and experience. For tenders the MSME fails, `consortium_builder.py` searches for a same-sector partner that fills the exact gap (turnover, certificates, experience) and returns the combined turnover.
 
+**Proactive match notifier (push half of the matchmaker)** (`services/match_notifier.py`, `routes/notifications.py`): an asyncio daemon started in the FastAPI lifespan re-runs the same solo and JV rules over every MSME and every open (Active, not past deadline) tender, then stores one `match_notifications` row per (MSME, tender, kind). A unique constraint makes scans idempotent, so the daemon, event triggers and multiple workers cannot create duplicates. Scans also run immediately after a tender is created (`POST /api/tenders`, `/api/tenders/upload-pdf`, `/api/m2m/v1/tenders/push`) or an MSME registers. Interval: `MATCH_SCAN_INTERVAL_SECONDS` (default 300; `0` disables the daemon). Endpoints: `GET /api/notifications/{msme_id}`, `POST /api/notifications/item/{id}/read`, `POST /api/notifications/{msme_id}/read-all`, `POST /api/notifications/scan`, `GET /api/notifications/daemon/status`. The portal shows a bell with an unread badge (polled every 30 s) in the Vendor Suite navbar. Delivery is in-app only; email/SMS/webhook delivery is not implemented.
+
 ### 2.3 Agent 2C — Cartel and collusion graph (`cartel-graph/`)
 
 Built by a separate contributor as a standalone service (`cartel-graph/main.py`, plus a small HTML/JS demo) and mounted into the gateway by `backend/src/api/routes/cartel.py`, which adds the repository's `cartel-graph/` folder to `sys.path`.
@@ -108,6 +110,23 @@ Contributed as a complete package (model artefacts, evaluation reports, demo, te
 - `BehaviorScorer` selects a scoring mode (`full` or `flight_only`) by available data and session length, and returns a **0–100 behavioural risk score**, a `risk_category`, a `reliability` rating (`low`/`medium`/`high`), counts of events received and scored, and plain-language `behavioral_evidence` bullets (for example, robotic timing clustering).
 - It is advisory: it flags sessions for audit and never blocks a bid.
 - Demonstration: the portal's *Simulate automated script bot* button sends 45 events at a fixed 12 ms flight / 8 ms hold. That is zero variance, which no human produces, so the verdict is high risk.
+
+### 2.4b Agent 3 — Solvency and ledger verification (`solvency-calculator/`)
+
+Mounted by `backend/src/main.py` (adds `solvency-calculator/` to `sys.path`, includes `app.routers.api`); endpoints live under `/api/v1/agent/solvency/*` (`analyze`, `verify-json`, `results`, `health`, `registration`).
+
+Pipeline: PDF text extraction (pdfplumber, PyMuPDF fallback, password support) → Gemini maps column layout only → `LedgerConstraintVerifier` (`ledger_verifier.py`):
+
+| Check | Rule |
+| :-- | :-- |
+| Row recurrence | `B_t = B_{t−1} + C_t − D_t` within ₹0.05; an OCR digit-confusion lattice may repair a row, otherwise `UNEXPLAINABLE_RESIDUAL` (CRITICAL) |
+| Page continuity | `opening(p+1) = closing(p)` (CRITICAL) |
+| Window dressing | robust Z of last-30-day mean balance vs prior median, using 1.4826·MAD; flag at ≥ 3 (HIGH) |
+| Round trips | large credit reversed by a near-equal debit within 7 days with matching narration (HIGH) |
+| Benford | max leading-digit deviation; flag above 0.25 with ≥ 30 amounts (LOW); not tested below 20 amounts |
+| Metrics | time-weighted average balance, min/max, coefficient of variation, OLS monthly slope |
+
+Verdict: any CRITICAL → `FAILED`; else any HIGH → `SUSPICIOUS`; else `PASSED`. `ABSTAINED` is used when extraction fails.
 
 ### 2.5 Enterprise infrastructure
 
@@ -134,7 +153,7 @@ The navbar has a segmented switcher: **MSME Vendor Suite** and **Government Audi
 
 ### 3.2 Routes
 
-`npm run build` produces **12 application routes** (13 entries counting Next's built-in `/_not-found`).
+`npm run build` produces **13 application routes** (14 entries counting Next's built-in `/_not-found`).
 
 | Route | Suite | Backend call | Highlights |
 | :-- | :-- | :-- | :-- |
@@ -147,6 +166,7 @@ The navbar has a segmented switcher: **MSME Vendor Suite** and **Government Audi
 | `/matchmaker` | Vendor | `GET /api/matchmaker/{id}`, `GET /api/msme/all` | Solo-qualified data grid; JV cards with lead, co-partner, combined turnover and indicative equity split |
 | `/documents` | Vendor | `GET /api/documents/{id}`, `POST …/extract-and-verify`, `POST …/upload`, `DELETE …/{id}` | Readiness gauge; certificate checklist; expiry and renewal alerts |
 | `/cartel-graph` | Auditor | `GET /api/cartel/bidders`, `/analyze`, `/graph-render` | SVG bipartite graph, cluster alerts with evidence, bidder table, graph JSON export |
+| `/solvency` | Auditor | `POST /api/v1/agent/solvency/analyze`, `…/verify-json` | Verdict banner, Z-score / Benford / TWAB / CV cards, flags, row-level audit ledger, sample statements |
 | `/bot-detection` | Auditor | `POST /api/behavior/analyze` | Live keystroke sandbox, flight/dwell charts, bot simulation, risk meter, reliability, evidence |
 | `/m2m-gateway` | Auditor | `/api/m2m/v1/*` | Request composer with `X-ProcureGuard-Key`, transaction stream with status, latency and a client-computed HMAC SHA-256 digest |
 | `/agent-pipeline` | Auditor | `POST /api/orchestrator/analyze` | Six-node graph, node log, context-reduction telemetry from the node logs |

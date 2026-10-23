@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Handshake, UserPlus } from "lucide-react";
 import RegisterMsmeModal from "@/components/RegisterMsmeModal";
 import { Btn, EmptyState, ErrorNotice, JsonDrawer, PageHeader, PageShell, Panel, Pill, Spinner, Stat, scoreTone } from "@/components/ui";
-import { apiRequest, errorMessage, formatLakhs, type MatchmakerDashboard, type MsmeSummary } from "@/lib/api";
+import { apiRequest, errorMessage, formatLakhs, getActiveMsmeId, setActiveMsmeId, type MatchmakerDashboard, type MsmeSummary } from "@/lib/api";
 
 export default function MatchmakerPage() {
   const [msmeId, setMsmeId] = useState("M101");
@@ -38,12 +38,15 @@ export default function MatchmakerPage() {
   }, []);
 
   useEffect(() => {
+    const id = getActiveMsmeId();
+    setMsmeId(id);
     loadMsmes();
-    load("M101");
+    load(id);
   }, [loadMsmes, load]);
 
   const select = (id: string) => {
     setMsmeId(id);
+    setActiveMsmeId(id);
     load(id);
   };
 

@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { BellRing, FileCheck2, Trash2, UserPlus } from "lucide-react";
 import RegisterMsmeModal from "@/components/RegisterMsmeModal";
 import { Btn, ErrorNotice, Gauge, JsonDrawer, PageHeader, PageShell, Panel, PdfDropzone, Pill, Spinner, scoreTone, type Tone } from "@/components/ui";
-import { apiRequest, errorMessage, type MsmeSummary, type VaultData, type VaultDoc } from "@/lib/api";
+import { apiRequest, errorMessage, setActiveMsmeId, type MsmeSummary, type VaultData, type VaultDoc } from "@/lib/api";
 
 /** Mirrors STANDARD_CHECKLIST in backend/src/api/routes/documents.py. */
 const CHECKLIST_META: Record<string, { mandatory: boolean; authority: string }> = {
@@ -151,7 +151,7 @@ function VaultContent() {
             <select
               aria-label="Enterprise"
               value={msmeId}
-              onChange={(e) => setMsmeId(e.target.value)}
+              onChange={(e) => { setMsmeId(e.target.value); setActiveMsmeId(e.target.value); }}
               className="rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-100 outline-none focus:border-sky-600"
             >
               {msmes.length === 0 && <option value={msmeId}>{msmeId}</option>}

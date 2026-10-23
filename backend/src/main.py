@@ -1,23 +1,44 @@
+import asyncio
 import os
 import shutil
+import sys
+from contextlib import suppress
+from pathlib import Path
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
-from src.api.routes import msme, legal, matchmaker, tenders, documents, auth, m2m, jobs, cartel, behavior
+from src.api.routes import msme, legal, matchmaker, tenders, documents, auth, m2m, jobs, cartel, behavior, notifications
+from src.services import match_notifier
 from src.db.seed import seed_database
 from src.orchestrator.graph import procurement_graph
 
+# Agent 3 (solvency-calculator/) is a self-contained package that imports as top-level `app` and
+# `ledger_verifier`; expose it on sys.path without touching the backend's own `src` package.
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+SOLVENCY_ROOT = PROJECT_ROOT / "solvency-calculator"
+if str(SOLVENCY_ROOT) not in sys.path:
+    sys.path.insert(0, str(SOLVENCY_ROOT))
+from app.routers.api import router as solvency_router  # noqa: E402  (Agent 3 router)
+
 # Load environment variables
-from pathlib import Path
 load_dotenv(dotenv_path=Path(__file__).resolve().parents[2] / ".env")  # repo-root .env, independent of CWD
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: Ensure SQLite/PostgreSQL tables exist and are seeded
     seed_database()
-    yield
+    # Module 2 push half: background daemon that matches tenders to MSMEs and stores notifications.
+    interval = match_notifier.configured_interval()
+    daemon = asyncio.create_task(match_notifier.scan_loop(interval)) if interval > 0 else None
+    try:
+        yield
+    finally:
+        if daemon:
+            daemon.cancel()
+            with suppress(asyncio.CancelledError):
+                await daemon
 
 app = FastAPI(
     title="ProcureGuard AI — Intelligent Procurement Integrity Platform",
@@ -29,6 +50,7 @@ This production API powers the ProcureGuard AI platform:
 2. **Module 2 (Matchmaker & Consortium):** Proactive Solo tender matching and Joint Venture (JV) recommendations.
 3. **Agent 2C (Cartel & Collusion Graph):** NetworkX bipartite collusion graph connecting bidders to shared beneficial owners, IPs, and bank routing codes.
 4. **Agent 4 (Behavioral Biometrics):** Keystroke dynamics timing analyzer detecting automated bidding bots.
+4b. **Agent 3 (Solvency & Ledger Verification):** Ledger-constrained bank statement forensics: row recurrence, page continuity, window dressing, round-trips, Benford's law, TWAB.
 5. **Agent 5 (Legal Semantic Diff):** Corrigendum tampering detection via Sentence-Transformers and temporal risk scoring.
 6. **Marketplace & Document Vault:** Dynamic active GeM tenders and MSME certificate readiness auditing.
 7. **Authentication & RBAC:** JWT Bearer tokens and role-based access control (MSME vs Government Auditor).
@@ -45,6 +67,7 @@ This production API powers the ProcureGuard AI platform:
         {"name": "Corrigendum Integrity & Tamper Detector", "description": "Agent 5 Corrigendum tampering detection via Cosine Similarity and temporal decay."},
         {"name": "Agent 2C: Cartel & Collusion Graph Intelligence", "description": "NetworkX bipartite collusion graph connecting bidders to shared owners, IPs, bank routing codes, and anomaly scoring."},
         {"name": "Agent 4: Behavioral Biometrics & Bid Rigging Bot Detection", "description": "Keystroke dynamics timing analyzer detecting automated bidding scripts and bots with 0-100 risk signal and plain-language evidence."},
+        {"name": "Solvency Verification Agent", "description": "Agent 3: ledger-constrained bank statement verifier with window-dressing, round-trip and Benford forensics and TWAB solvency metrics."},
         {"name": "Autonomous Matchmaker & Coalition Builder", "description": "Module 2 Solo tender matchmaker and Joint Venture (JV) coalition builder."},
         {"name": "GeM Procurement Repository", "description": "Live GeM tender repository with sector filtering and search."},
         {"name": "Procurement Readiness Vault", "description": "MSME Certificate Vault, 71.4% readiness scoring, and proactive expiry alerts."},
@@ -70,7 +93,9 @@ app.include_router(msme.router, prefix="/api")
 app.include_router(legal.router, prefix="/api")
 app.include_router(cartel.router, prefix="/api")
 app.include_router(behavior.router, prefix="/api")
+app.include_router(solvency_router)  # served at /api/v1/agent/solvency/*
 app.include_router(matchmaker.router)
+app.include_router(notifications.router)
 app.include_router(tenders.router)
 app.include_router(documents.router)
 app.include_router(m2m.router)
@@ -156,6 +181,7 @@ async def health():
             "Module 1: MSME NLP Copilot",
             "Module 2: Proactive Matchmaker & Consortium Builder",
             "Agent 2C: Cartel & Collusion Graph Intelligence",
+            "Agent 3: Solvency & Ledger Verification Engine",
             "Agent 4: Behavioral Biometrics & Bot Detection",
             "Agent 5: Legal Semantic Diff",
             "Tender Marketplace API",

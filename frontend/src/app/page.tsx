@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Activity, Building2, Fingerprint, GitBranch, Landmark, Network, Scale, Server, FileSearch, GitCompare, Handshake, FolderCheck } from "lucide-react";
+import { Activity, Banknote, Building2, Fingerprint, GitBranch, Landmark, Network, Scale, Server, FileSearch, GitCompare, Handshake, FolderCheck } from "lucide-react";
 import type { ComponentType } from "react";
 import { PageShell } from "@/components/ui";
 
@@ -22,6 +22,7 @@ const VENDOR: Entry[] = [
 
 const AUDITOR: Entry[] = [
   { href: "/cartel-graph", title: "Cartel Graph", desc: "Bipartite network of bidders, owners, IPs and bank codes.", ref: "GET /api/cartel/analyze", Icon: Network },
+  { href: "/solvency", title: "Solvency Auditor", desc: "Ledger-constrained bank statement forensics: recurrence, page continuity, window dressing, Benford.", ref: "POST /api/v1/agent/solvency/analyze", Icon: Banknote },
   { href: "/bot-detection", title: "Bot Detection", desc: "Keystroke flight and dwell-time forensics for scripted bids.", ref: "POST /api/behavior/analyze", Icon: Fingerprint },
   { href: "/m2m-gateway", title: "M2M Gateway", desc: "Server-to-server tender push, compliance query and webhooks.", ref: "/api/m2m/v1/*", Icon: Server },
   { href: "/agent-pipeline", title: "Agent Pipeline", desc: "Six-node LangGraph execution trace and token telemetry.", ref: "POST /api/orchestrator/analyze", Icon: GitBranch },

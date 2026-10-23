@@ -1,6 +1,6 @@
 import os
 import hashlib
-from fastapi import APIRouter, Depends, HTTPException, Header, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Header, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field, HttpUrl
 from typing import Dict, Any, List, Optional
@@ -8,6 +8,7 @@ from datetime import datetime
 
 from src.db.database import get_db
 from src.db.models import TenderModel, MSMEModel, M2MClientModel
+from src.services.match_notifier import run_scan_job
 
 router = APIRouter(prefix="/api/m2m/v1", tags=["Machine-to-Machine (M2M) Sovereign Gateway"])
 
@@ -56,6 +57,7 @@ class WebhookSubscriptionRequest(BaseModel):
 @router.post("/tenders/push", response_model=Dict[str, Any], status_code=status.HTTP_201_CREATED)
 async def push_tender_m2m(
     payload: M2MTenderPushRequest,
+    background_tasks: BackgroundTasks,
     api_key: str = Depends(verify_m2m_api_key),
     db: Session = Depends(get_db)
 ):
@@ -88,6 +90,7 @@ async def push_tender_m2m(
     db.add(new_tender)
     db.commit()
     db.refresh(new_tender)
+    background_tasks.add_task(run_scan_job, None, [new_tender.tender_id])  # push matches to MSMEs
 
     return {
         "status": "SUCCESS",

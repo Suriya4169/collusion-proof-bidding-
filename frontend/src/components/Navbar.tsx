@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Building2, Landmark, ShieldCheck, UserPlus } from "lucide-react";
 import RegisterMsmeModal from "./RegisterMsmeModal";
+import NotificationBell from "./NotificationBell";
 import { StatusDot, type Tone } from "./ui";
 import { apiRequest, PERSONA_STORAGE_KEY, type HealthResponse, type Persona } from "@/lib/api";
 
@@ -19,6 +20,7 @@ const VENDOR_LINKS = [
 
 const AUDITOR_LINKS = [
   { href: "/cartel-graph", label: "Cartel Graph" },
+  { href: "/solvency", label: "Solvency Auditor" },
   { href: "/bot-detection", label: "Bot Detection" },
   { href: "/m2m-gateway", label: "M2M Gateway" },
   { href: "/agent-pipeline", label: "Agent Pipeline" },
@@ -146,6 +148,7 @@ export default function Navbar() {
               <span className="text-[11px] font-medium text-slate-300">{health.label}</span>
               <span className="hidden font-mono text-[10.5px] text-slate-500 md:inline">{health.detail}</span>
             </div>
+            {persona === "vendor" && <NotificationBell />}
             {persona === "vendor" && (
               <button
                 onClick={() => setIsModalOpen(true)}

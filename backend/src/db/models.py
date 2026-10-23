@@ -1,6 +1,6 @@
 import json
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Float, Boolean, Text, DateTime
+from sqlalchemy import Column, Integer, String, Float, Boolean, Text, DateTime, UniqueConstraint
 from .database import Base
 
 class MSMEModel(Base):
@@ -193,3 +193,34 @@ class M2MClientModel(Base):
             "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S") if self.created_at else ""
         }
 
+
+
+class NotificationModel(Base):
+    """A proactive tender-match alert pushed to an MSME by the match notifier."""
+    __tablename__ = "match_notifications"
+    __table_args__ = (UniqueConstraint("msme_id", "tender_id", "kind", name="uq_notification_msme_tender_kind"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    msme_id = Column(String, index=True, nullable=False)
+    tender_id = Column(String, index=True, nullable=False)
+    kind = Column(String, nullable=False)  # "SOLO" or "JV"
+    score = Column(Integer, default=0)
+    title = Column(String, nullable=False)
+    message = Column(Text, nullable=False)
+    partner_name = Column(String, nullable=True)  # JV co-partner
+    created_at = Column(DateTime, default=datetime.utcnow)
+    read_at = Column(DateTime, nullable=True)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "msme_id": self.msme_id,
+            "tender_id": self.tender_id,
+            "kind": self.kind,
+            "score": self.score,
+            "title": self.title,
+            "message": self.message,
+            "partner_name": self.partner_name,
+            "created_at": self.created_at.strftime("%Y-%m-%dT%H:%M:%S") if self.created_at else "",
+            "read": self.read_at is not None,
+        }

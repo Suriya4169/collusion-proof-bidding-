@@ -2,13 +2,14 @@ import os
 import re
 import shutil
 import random
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
 
 from src.db.database import get_db
 from src.db.models import TenderModel
+from src.services.match_notifier import run_scan_job
 from src.agents.module1.agent1_copilot.pdf_extractor import extract_text_from_pdf
 
 router = APIRouter(prefix="/api/tenders", tags=["GeM Procurement Repository"])
@@ -75,7 +76,7 @@ async def get_tender_detail(tender_id: str, db: Session = Depends(get_db)):
     return tender.to_dict()
 
 @router.post("", response_model=Dict[str, Any], status_code=201)
-async def create_tender(payload: TenderCreateRequest, db: Session = Depends(get_db)):
+async def create_tender(payload: TenderCreateRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     """
     Allows publishing a new tender into the platform database.
     """
@@ -101,12 +102,13 @@ async def create_tender(payload: TenderCreateRequest, db: Session = Depends(get_
     db.add(tender)
     db.commit()
     db.refresh(tender)
+    background_tasks.add_task(run_scan_job, None, [tender.tender_id])  # push matches to MSMEs
 
     return {"message": "Tender created successfully", "tender": tender.to_dict()}
 
 
 @router.post("/upload-pdf", response_model=Dict[str, Any], status_code=201)
-async def upload_tender_pdf(file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def upload_tender_pdf(background_tasks: BackgroundTasks, file: UploadFile = File(...), db: Session = Depends(get_db)):
     """
     Real-World GeM Tender Ingestion:
     Accepts any official GeM or CPPP public tender notice PDF.
@@ -231,6 +233,7 @@ async def upload_tender_pdf(file: UploadFile = File(...), db: Session = Depends(
             db.refresh(new_tender)
             created_tender = new_tender
 
+        background_tasks.add_task(run_scan_job, None, [created_tender.tender_id])  # push matches to MSMEs
         return {
             "message": f"Successfully ingested tender '{title}' from GeM PDF!",
             "tender": created_tender.to_dict()

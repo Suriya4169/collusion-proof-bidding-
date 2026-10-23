@@ -22,6 +22,7 @@ LLMs read and translate documents; deterministic Python makes every eligibility,
 | **Government Auditor** | Cartel & collusion graph (shared owners, IPs, bank codes) | Agent 2C · `/cartel-graph` |
 | | Keystroke-dynamics bot detection (0–100 risk) | Agent 4 · `/bot-detection` |
 | | M2M sovereign gateway console (`X-ProcureGuard-Key`) | `/m2m-gateway` |
+| | Bank-statement forensics: ledger recurrence, window dressing, Benford | Agent 3 · `/solvency` |
 | | LangGraph 6-node pipeline visualizer | `/agent-pipeline` |
 
 ## Repository layout
@@ -29,6 +30,7 @@ LLMs read and translate documents; deterministic Python makes every eligibility,
 ```text
 backend/                       FastAPI 2.0 gateway, SQLite/Postgres ORM, Module 1 & 2, Agent 5, LangGraph orchestrator
 cartel-graph/                  Agent 2C engine (NetworkX) — imported by backend/src/api/routes/cartel.py
+solvency-calculator/           Agent 3 ledger-constrained solvency verifier — imported by the gateway (app.routers.api)
 agent-4-behavioral-biometrics/ Agent 4 scorer, model artefacts, evaluation reports — imported by routes/behavior.py
 frontend/                      Next.js 16 (Turbopack) dual-portal UI
 docs/                          Manual, Swagger reference, design blueprints
@@ -44,7 +46,7 @@ Prerequisites: Python 3.12, Node.js 20+, a Gemini API key.
 cp .env.example .env            # set GEMINI_API_KEY (Windows: copy .env.example .env)
 python -m venv backend/venv
 backend/venv/Scripts/activate   # Linux/macOS: source backend/venv/bin/activate
-pip install -r backend/requirements.txt -r cartel-graph/requirements.txt -r agent-4-behavioral-biometrics/requirements.txt
+pip install -r backend/requirements.txt -r cartel-graph/requirements.txt -r agent-4-behavioral-biometrics/requirements.txt -r solvency-calculator/requirements.txt
 cd frontend && npm install && cd ..
 
 # 1. backend  (run from the repo root)
