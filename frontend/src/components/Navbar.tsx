@@ -14,30 +14,39 @@ export default function Navbar() {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
               <Link href="/" className="flex-shrink-0 flex items-center gap-2">
-                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-lg">M</span>
+                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-md shadow-blue-900/40">
+                  <span className="text-white font-bold text-lg">P</span>
                 </div>
-                <span className="text-white font-semibold text-xl tracking-tight">MSME Copilot</span>
+                <div>
+                  <span className="text-white font-bold text-lg tracking-tight">ProcureGuard</span>
+                  <span className="text-blue-400 font-semibold text-xs ml-1 px-1.5 py-0.5 rounded bg-blue-950/80 border border-blue-800/60">AI Suite</span>
+                </div>
               </Link>
-              <div className="hidden md:block ml-10">
-                <div className="flex items-baseline space-x-4">
-                  <Link href="/marketplace" className="text-slate-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">
+              <div className="hidden lg:block ml-8">
+                <div className="flex items-baseline space-x-2">
+                  <Link href="/marketplace" className="text-slate-300 hover:text-white px-2.5 py-2 rounded-md text-xs font-medium transition-colors">
                     Tenders
                   </Link>
-                  <Link href="/dashboard" className="text-slate-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">
-                    Compliance Dashboard
+                  <Link href="/dashboard" className="text-slate-300 hover:text-white px-2.5 py-2 rounded-md text-xs font-medium transition-colors">
+                    Compliance
                   </Link>
-                  <Link href="/payment-tracker" className="text-slate-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                  <Link href="/payment-tracker" className="text-slate-300 hover:text-white px-2.5 py-2 rounded-md text-xs font-medium transition-colors">
                     Payment Tracker
                   </Link>
-                  <Link href="/legal-diff" className="text-slate-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                  <Link href="/legal-diff" className="text-slate-300 hover:text-white px-2.5 py-2 rounded-md text-xs font-medium transition-colors">
                     Legal Diff
                   </Link>
-                  <Link href="/matchmaker" className="text-slate-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                  <Link href="/matchmaker" className="text-slate-300 hover:text-white px-2.5 py-2 rounded-md text-xs font-medium transition-colors">
                     Matchmaker
                   </Link>
-                  <Link href="/documents" className="text-slate-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">
-                    Document Vault
+                  <Link href="/documents" className="text-slate-300 hover:text-white px-2.5 py-2 rounded-md text-xs font-medium transition-colors">
+                    Vault
+                  </Link>
+                  <Link href="/cartel-graph" className="text-rose-400 hover:text-rose-300 bg-rose-950/40 border border-rose-900/50 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-colors">
+                    Cartel Graph
+                  </Link>
+                  <Link href="/bot-detection" className="text-cyan-400 hover:text-cyan-300 bg-cyan-950/40 border border-cyan-900/50 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-colors">
+                    Bot Biometrics
                   </Link>
                 </div>
               </div>

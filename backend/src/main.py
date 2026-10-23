@@ -5,7 +5,7 @@ from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
-from src.api.routes import msme, legal, matchmaker, tenders, documents, auth, m2m, jobs
+from src.api.routes import msme, legal, matchmaker, tenders, documents, auth, m2m, jobs, cartel, behavior
 from src.db.seed import seed_database
 from src.orchestrator.graph import procurement_graph
 
@@ -26,12 +26,14 @@ app = FastAPI(
 This production API powers the ProcureGuard AI platform:
 1. **Module 1 (NLP Copilot):** 10-Sub-Agent pipeline with PyMuPDF, Ephemeral RAG, Gemini 1.5, Symbolic Verifier, CDS scoring, Hindi translation, and MSMED Section 16 payment penalty tracker.
 2. **Module 2 (Matchmaker & Consortium):** Proactive Solo tender matching and Joint Venture (JV) recommendations.
-3. **Agent 5 (Legal Semantic Diff):** Corrigendum tampering detection via Sentence-Transformers and temporal risk scoring.
-4. **Marketplace & Document Vault:** Dynamic active GeM tenders and MSME certificate readiness auditing.
-5. **Authentication & RBAC:** JWT Bearer tokens and role-based access control (MSME vs Government Auditor).
-6. **M2M Sovereign Gateway:** Machine-to-Machine API key ingestion for GeM/CPPP portal webhooks.
-7. **Asynchronous Job Queue:** Non-blocking background workers for large tender processing.
-8. **LangGraph Pipeline:** Multi-agent state machine orchestrator.
+3. **Agent 2C (Cartel & Collusion Graph):** NetworkX bipartite collusion graph connecting bidders to shared beneficial owners, IPs, and bank routing codes.
+4. **Agent 4 (Behavioral Biometrics):** Keystroke dynamics timing analyzer detecting automated bidding bots.
+5. **Agent 5 (Legal Semantic Diff):** Corrigendum tampering detection via Sentence-Transformers and temporal risk scoring.
+6. **Marketplace & Document Vault:** Dynamic active GeM tenders and MSME certificate readiness auditing.
+7. **Authentication & RBAC:** JWT Bearer tokens and role-based access control (MSME vs Government Auditor).
+8. **M2M Sovereign Gateway:** Machine-to-Machine API key ingestion for GeM/CPPP portal webhooks.
+9. **Asynchronous Job Queue:** Non-blocking background workers for large tender processing.
+10. **LangGraph Pipeline:** Multi-agent state machine orchestrator.
 """,
     version="2.0.0",
     lifespan=lifespan,
@@ -40,6 +42,8 @@ This production API powers the ProcureGuard AI platform:
         {"name": "Bid Eligibility & Compliance Auditor", "description": "Neurosymbolic NLP pipeline analyzing tender PDFs and evaluating compliance."},
         {"name": "Statutory Payment Recovery Engine", "description": "Section 16 MSMED compounding interest penalty tracker and legal demand notice generator."},
         {"name": "Corrigendum Integrity & Tamper Detector", "description": "Agent 5 Corrigendum tampering detection via Cosine Similarity and temporal decay."},
+        {"name": "Agent 2C: Cartel & Collusion Graph Intelligence", "description": "NetworkX bipartite collusion graph connecting bidders to shared owners, IPs, bank routing codes, and anomaly scoring."},
+        {"name": "Agent 4: Behavioral Biometrics & Bid Rigging Bot Detection", "description": "Keystroke dynamics timing analyzer detecting automated bidding scripts and bots with 0-100 risk signal and plain-language evidence."},
         {"name": "Autonomous Matchmaker & Coalition Builder", "description": "Module 2 Solo tender matchmaker and Joint Venture (JV) coalition builder."},
         {"name": "GeM Procurement Repository", "description": "Live GeM tender repository with sector filtering and search."},
         {"name": "Procurement Readiness Vault", "description": "MSME Certificate Vault, 71.4% readiness scoring, and proactive expiry alerts."},
@@ -63,6 +67,8 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(msme.router, prefix="/api")
 app.include_router(legal.router, prefix="/api")
+app.include_router(cartel.router, prefix="/api")
+app.include_router(behavior.router, prefix="/api")
 app.include_router(matchmaker.router)
 app.include_router(tenders.router)
 app.include_router(documents.router)
@@ -148,6 +154,8 @@ async def health():
         "modules": [
             "Module 1: MSME NLP Copilot",
             "Module 2: Proactive Matchmaker & Consortium Builder",
+            "Agent 2C: Cartel & Collusion Graph Intelligence",
+            "Agent 4: Behavioral Biometrics & Bot Detection",
             "Agent 5: Legal Semantic Diff",
             "Tender Marketplace API",
             "Document Vault API",
