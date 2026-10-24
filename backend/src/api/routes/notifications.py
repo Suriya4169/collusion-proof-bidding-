@@ -5,8 +5,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from src.core.access import REVIEWERS, ensure_msme_write, get_current_user, msme_path_read, msme_path_write, require_roles
 from src.db.database import get_db
-from src.db.models import MSMEModel, NotificationModel
+from src.db.models import MSMEModel, NotificationModel, UserModel
 from src.services import match_notifier
 
 router = APIRouter(prefix="/api/notifications", tags=["Autonomous Matchmaker & Coalition Builder"])
@@ -17,12 +18,14 @@ class ScanRequest(BaseModel):
     tender_id: Optional[str] = None
 
 
-@router.get("/daemon/status", summary="Match notifier daemon status", response_model=Dict[str, Any])
+@router.get("/daemon/status", summary="Match notifier daemon status", response_model=Dict[str, Any],
+            dependencies=[Depends(require_roles(REVIEWERS))])
 async def daemon_status():
     return match_notifier.daemon_state
 
 
-@router.post("/scan", summary="Run a match scan now (optionally for one MSME or tender)", response_model=Dict[str, Any])
+@router.post("/scan", summary="Run a match scan now (optionally for one MSME or tender)", response_model=Dict[str, Any],
+             dependencies=[Depends(require_roles(REVIEWERS))])
 async def scan_now(req: ScanRequest, db: Session = Depends(get_db)):
     created = match_notifier.scan(
         db,
@@ -33,17 +36,19 @@ async def scan_now(req: ScanRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/item/{notification_id}/read", summary="Mark one notification read", response_model=Dict[str, Any])
-async def mark_read(notification_id: int, db: Session = Depends(get_db)):
+async def mark_read(notification_id: int, db: Session = Depends(get_db), user: UserModel = Depends(get_current_user)):
     row = db.query(NotificationModel).filter(NotificationModel.id == notification_id).first()
     if not row:
         raise HTTPException(status_code=404, detail=f"Notification {notification_id} not found.")
+    ensure_msme_write(db, user, row.msme_id)
     if row.read_at is None:
         row.read_at = datetime.utcnow()
         db.commit()
     return row.to_dict()
 
 
-@router.post("/{msme_id}/read-all", summary="Mark all of an MSME's notifications read", response_model=Dict[str, Any])
+@router.post("/{msme_id}/read-all", summary="Mark all of an MSME's notifications read", response_model=Dict[str, Any],
+             dependencies=[Depends(msme_path_write)])
 async def mark_all_read(msme_id: str, db: Session = Depends(get_db)):
     now = datetime.utcnow()
     updated = (
@@ -55,7 +60,8 @@ async def mark_all_read(msme_id: str, db: Session = Depends(get_db)):
     return {"msme_id": msme_id, "marked_read": updated}
 
 
-@router.get("/{msme_id}", summary="List match notifications for an MSME", response_model=Dict[str, Any])
+@router.get("/{msme_id}", summary="List match notifications for an MSME", response_model=Dict[str, Any],
+            dependencies=[Depends(msme_path_read)])
 async def list_notifications(
     msme_id: str,
     unread_only: bool = Query(False),

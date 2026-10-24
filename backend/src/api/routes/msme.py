@@ -6,8 +6,9 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 
+from src.core.access import VENDORS, link_enterprise, linked_msme_ids, require_roles, get_current_user
 from src.db.database import get_db
-from src.db.models import MSMEModel, DocumentModel
+from src.db.models import MSMEModel, DocumentModel, UserModel
 from src.services.match_notifier import run_scan_job
 from src.agents.module1.agent1_copilot.pdf_extractor import extract_text_from_pdf
 from src.agents.module1.agent1_copilot.rag_retriever import chunk_text, build_hybrid_retriever, retrieve_relevant_chunks
@@ -27,6 +28,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @router.post(
     "/tender/analyze",
+    dependencies=[Depends(require_roles(VENDORS))],
     response_model=VerificationReport,
     tags=["Bid Eligibility & Compliance Auditor"],
     summary="Run Neurosymbolic Copilot Pipeline",
@@ -99,6 +101,7 @@ async def analyze_tender(
 
 @router.post(
     "/payments/track",
+    dependencies=[Depends(require_roles(VENDORS))],
     response_model=PaymentPenaltyReport,
     tags=["Statutory Payment Recovery Engine"],
     summary="Calculate Section 16 Payment Penalty via AI OCR",
@@ -164,22 +167,32 @@ class MSMERegisterRequest(BaseModel):
     summary="Get All Registered MSMEs",
     description="Fetches all registered enterprises from the SQLite database to dynamically populate all frontend selectors."
 )
-async def get_all_msmes(db: Session = Depends(get_db)):
+async def get_all_msmes(user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):
     """
-    Returns list of all MSMEs in the database.
+    Returns every enterprise to reviewers. A vendor sees only the enterprises linked to their own account, so the
+    enterprise selectors in the vendor screens cannot be used to browse other companies' details.
     """
     msmes = db.query(MSMEModel).all()
+    if user.role == "msme":
+        mine = linked_msme_ids(db, user)
+        msmes = [m for m in msmes if m.msme_id in mine]
     return [m.to_dict() for m in msmes]
 
 
 @router.post(
     "/msme/register",
+    dependencies=[Depends(require_roles(VENDORS))],
     response_model=Dict[str, Any],
     tags=["Autonomous Matchmaker & Coalition Builder"],
     summary="Register New Enterprise (Real-World Ingestion)",
     description="Validates real Udyam Registration & GSTIN format, auto-allocates an enterprise ID, and saves to the database."
 )
-async def register_msme(req: MSMERegisterRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+async def register_msme(
+    req: MSMERegisterRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    user: UserModel = Depends(get_current_user),
+):
     """
     Registers a new MSME with statutory format validation.
     """
@@ -252,6 +265,10 @@ async def register_msme(req: MSMERegisterRequest, background_tasks: BackgroundTa
     ]
     db.add_all(initial_docs)
     db.commit()
+
+    # The vendor who registered this enterprise may act for it (their later calls are ownership-checked).
+    if user.role == "msme":
+        link_enterprise(db, user, next_id)
 
     # Full scan: the new enterprise may match open tenders and may also become a JV partner for others.
     background_tasks.add_task(run_scan_job)

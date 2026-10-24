@@ -1,15 +1,23 @@
 import asyncio
+import logging
 import os
 import shutil
 import sys
 from contextlib import suppress
 from pathlib import Path
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi import Depends, FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
 from src.api.routes import msme, legal, matchmaker, tenders, documents, auth, m2m, jobs, cartel, behavior, notifications
+from src.core.access import ANY_USER, REVIEWERS, require_roles
+
+try:  # MCP server for the bot-detection module; the platform runs without it if the `mcp` package is absent
+    from src import mcp_server
+except ImportError as _mcp_missing:
+    mcp_server = None
+    logging.getLogger("procureguard").warning("MCP server not available: %s", _mcp_missing)
 from src.services import match_notifier
 from src.db.seed import seed_database
 from src.orchestrator.graph import procurement_graph
@@ -26,6 +34,11 @@ from app.routers.api import router as solvency_router  # noqa: E402  (Agent 3 ro
 load_dotenv(dotenv_path=Path(__file__).resolve().parents[2] / ".env")  # repo-root .env, independent of CWD
 
 @asynccontextmanager
+async def _no_mcp():
+    yield
+
+
+@asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: Ensure SQLite/PostgreSQL tables exist and are seeded
     seed_database()
@@ -33,7 +46,8 @@ async def lifespan(app: FastAPI):
     interval = match_notifier.configured_interval()
     daemon = asyncio.create_task(match_notifier.scan_loop(interval)) if interval > 0 else None
     try:
-        yield
+        async with (mcp_server.lifespan() if mcp_server else _no_mcp()):
+            yield
     finally:
         if daemon:
             daemon.cancel()
@@ -78,28 +92,38 @@ This production API powers the ProcureGuard AI platform:
     ]
 )
 
-# CORS middleware for Next.js Frontend
+# CORS middleware for the Next.js frontend. Allowed origins come from CORS_ORIGINS (comma separated);
+# the default is the local dev server. Logins travel in the Authorization header, not in cookies.
+CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Register All API Routers
+# Register All API Routers. Access control (src/core/access.py):
+#   * a router-level dependency below sets who may use the whole router;
+#   * routers marked "per route" guard their own endpoints (roles and per-enterprise ownership);
+#   * auth is public by design (login/register; register is restricted inside), m2m uses its own API key.
+#   tests/test_access_control.py fails if any route is left open by accident.
+any_user = [Depends(require_roles(ANY_USER))]
+reviewers = [Depends(require_roles(REVIEWERS))]
 app.include_router(auth.router)
-app.include_router(msme.router, prefix="/api")
-app.include_router(legal.router, prefix="/api")
-app.include_router(cartel.router, prefix="/api")
-app.include_router(behavior.router, prefix="/api")
-app.include_router(solvency_router)  # served at /api/v1/agent/solvency/*
-app.include_router(matchmaker.router)
-app.include_router(notifications.router)
-app.include_router(tenders.router)
-app.include_router(documents.router)
-app.include_router(m2m.router)
-app.include_router(jobs.router)
+app.include_router(msme.router, prefix="/api")  # per route
+app.include_router(legal.router, prefix="/api", dependencies=any_user)
+app.include_router(cartel.router, prefix="/api", dependencies=reviewers)
+app.include_router(behavior.router, prefix="/api")  # per route
+app.include_router(solvency_router, dependencies=reviewers)  # served at /api/v1/agent/solvency/*
+app.include_router(matchmaker.router)  # per route
+app.include_router(notifications.router)  # per route
+app.include_router(tenders.router, dependencies=any_user)
+app.include_router(documents.router)  # per route
+app.include_router(m2m.router)  # X-ProcureGuard-Key
+app.include_router(jobs.router, dependencies=any_user)
+if mcp_server:
+    mcp_server.mount(app)  # /mcp/ : reviewers only (bearer JWT), see src/mcp_server.py
 
 UPLOAD_DIR = "test_data/uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -107,7 +131,8 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 @app.post(
     "/api/orchestrator/analyze",
     tags=["Multi-Agent Workflow Orchestrator"],
-    summary="Execute Multi-Agent Pipeline via LangGraph StateGraph"
+    summary="Execute Multi-Agent Pipeline via LangGraph StateGraph",
+    dependencies=any_user,
 )
 async def orchestrate_tender_analysis(
     file: UploadFile = File(...),

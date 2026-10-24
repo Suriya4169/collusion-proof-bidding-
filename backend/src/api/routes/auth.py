@@ -5,16 +5,18 @@ from typing import Optional, Dict, Any
 
 from src.db.database import get_db
 from src.db.models import UserModel, MSMEModel
-from src.core.auth import hash_password, verify_password, create_access_token, get_current_user
+from src.core.auth import hash_password, verify_password, create_access_token, get_current_user, get_optional_user
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication & Access Control (RBAC)"])
+
+ASSIGNABLE_ROLES = ("msme", "government_auditor", "admin")
 
 class UserRegisterRequest(BaseModel):
     email: str = Field(..., example="founder@apexprecision.in")
     password: str = Field(..., min_length=6, example="SecurePass123!")
     full_name: str = Field(..., example="Rajesh Sharma")
     role: str = Field(default="msme", example="msme") # "msme", "government_auditor", "admin"
-    msme_id: Optional[str] = Field(default="M101", example="M101")
+    msme_id: Optional[str] = Field(default=None, example="M101")  # an admin links a vendor account to its enterprise
 
 class UserLoginRequest(BaseModel):
     email: str = Field(..., example="founder@apexprecision.in")
@@ -26,10 +28,34 @@ class TokenResponse(BaseModel):
     user: Dict[str, Any]
 
 @router.post("/register", response_model=Dict[str, Any], status_code=status.HTTP_201_CREATED)
-async def register_user(req: UserRegisterRequest, db: Session = Depends(get_db)):
+async def register_user(
+    req: UserRegisterRequest,
+    db: Session = Depends(get_db),
+    caller: Optional[UserModel] = Depends(get_optional_user),
+):
     """
     Registers a new user with bcrypt password hashing and assigned RBAC role.
+
+    Anyone may register a vendor (`msme`) account. Auditor and admin accounts can only be created by a signed-in
+    admin: the role is a privilege, and a public form must not be able to grant it. An enterprise (`msme_id`)
+    can be linked to one account only.
     """
+    if req.role not in ASSIGNABLE_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unknown role. Choose one of: {', '.join(ASSIGNABLE_ROLES)}."
+        )
+    if req.role != "msme" and not (caller and caller.role == "admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only an administrator can create auditor or admin accounts."
+        )
+    if req.role == "msme" and req.msme_id and db.query(UserModel).filter(UserModel.msme_id == req.msme_id).first():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="That enterprise is already linked to an account."
+        )
+
     existing_user = db.query(UserModel).filter(UserModel.email == req.email).first()
     if existing_user:
         raise HTTPException(

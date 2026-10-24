@@ -1,12 +1,13 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from typing import Dict, Any
 
+from src.core.access import msme_path_read
 from src.agents.module2.agent2_matchmaker.matchmaker import find_solo_opportunities
 from src.agents.module2.agent2_matchmaker.consortium_builder import analyze_jv_opportunities
 
 router = APIRouter(prefix="/api/matchmaker", tags=["Autonomous Matchmaker & Coalition Builder"])
 
-@router.get("/{msme_id}", response_model=Dict[str, Any])
+@router.get("/{msme_id}", response_model=Dict[str, Any], dependencies=[Depends(msme_path_read)])
 async def get_matchmaker_dashboard(msme_id: str):
     """
     Module 2 Phase 3: The Matchmaker API

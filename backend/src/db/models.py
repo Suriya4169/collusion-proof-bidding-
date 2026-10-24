@@ -138,6 +138,18 @@ class UserModel(Base):
         }
 
 
+class UserEnterpriseModel(Base):
+    """An enterprise a vendor account may act for, beyond the one on the account itself (``UserModel.msme_id``).
+    A vendor who registers a new enterprise is linked to it here, so they keep access to what they created."""
+    __tablename__ = "user_enterprises"
+    __table_args__ = (UniqueConstraint("user_id", "msme_id", name="uq_user_enterprise"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, index=True, nullable=False)
+    msme_id = Column(String, index=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 class JobModel(Base):
     __tablename__ = "async_jobs"
 
@@ -223,4 +235,104 @@ class NotificationModel(Base):
             "partner_name": self.partner_name,
             "created_at": self.created_at.strftime("%Y-%m-%dT%H:%M:%S") if self.created_at else "",
             "read": self.read_at is not None,
+        }
+
+
+class BehaviorSignalModel(Base):
+    """One Agent 4 (behavioural biometrics) signal attached to a bid or tender reference.
+
+    Only derived values are stored (score, category, evidence text). Raw keystroke timings and anything the
+    bidder typed are never persisted. A signal is advisory: nothing in the platform blocks on it.
+    """
+    __tablename__ = "behavior_signals"
+
+    id = Column(Integer, primary_key=True, index=True)
+    reference = Column(String, index=True, nullable=False)  # bid / tender reference the signal belongs to
+    session_id = Column(String, nullable=False)
+    user_id = Column(Integer, nullable=True)
+    msme_id = Column(String, index=True, nullable=True)
+    # scored | insufficient_data | no_timing | invalid_timing | unavailable
+    status = Column(String, index=True, nullable=False)
+    scoring_mode = Column(String, nullable=True)  # full | flight_only
+    risk_score = Column(Float, nullable=True)  # 0-100
+    risk_category = Column(String, nullable=True)  # LOW_ANOMALY | MODERATE_ANOMALY | HIGH_ANOMALY
+    anomaly = Column(Boolean, nullable=True)
+    reliability = Column(String, nullable=True)  # low | medium | high
+    events_received = Column(Integer, default=0)
+    evidence_json = Column(Text, default="[]")  # JSON list of plain-language evidence strings
+    message = Column(Text, nullable=True)
+    model_version = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    # Human review: set to "pending" when the signal needs a look, then "cleared" or "escalated" by a reviewer.
+    # The full history is kept in behavior_review_events; these columns are the latest decision.
+    review_state = Column(String, index=True, nullable=True)
+    reviewed_by = Column(String, nullable=True)  # reviewer's e-mail
+    reviewed_at = Column(DateTime, nullable=True)
+    review_note = Column(Text, nullable=True)
+
+    @property
+    def evidence(self):
+        try:
+            return json.loads(self.evidence_json) if self.evidence_json else []
+        except Exception:
+            return []
+
+    @evidence.setter
+    def evidence(self, val):
+        self.evidence_json = json.dumps(list(val or []))
+
+    REVIEW_STATUSES = ("no_timing", "invalid_timing")  # statuses a reviewer should look at even without a score
+    REVIEW_DECISIONS = ("cleared", "escalated")
+
+    @property
+    def needs_review(self) -> bool:
+        """True when a reviewer should look: an anomalous score, or timing that is missing or malformed."""
+        return bool(self.anomaly) or self.status in self.REVIEW_STATUSES
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "reference": self.reference,
+            "session_id": self.session_id,
+            "msme_id": self.msme_id,
+            "status": self.status,
+            "scoring_mode": self.scoring_mode,
+            "behavioral_risk_score": self.risk_score,
+            "risk_category": self.risk_category,
+            "behavioral_anomaly": self.anomaly,
+            "reliability": self.reliability,
+            "events_received": self.events_received,
+            "behavioral_evidence": self.evidence,
+            "message": self.message,
+            "model_version": self.model_version,
+            "needs_review": self.needs_review,
+            "review_state": self.review_state,
+            "reviewed_by": self.reviewed_by,
+            "reviewed_at": self.reviewed_at.strftime("%Y-%m-%d %H:%M:%S") if self.reviewed_at else None,
+            "review_note": self.review_note,
+            "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S") if self.created_at else "",
+        }
+
+
+class BehaviorReviewEventModel(Base):
+    """Append-only audit trail of reviewer decisions on behaviour signals. Rows are never updated or deleted."""
+    __tablename__ = "behavior_review_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    signal_id = Column(Integer, index=True, nullable=False)
+    reviewer = Column(String, nullable=False)  # reviewer's e-mail
+    reviewer_role = Column(String, nullable=False)
+    decision = Column(String, nullable=False)  # cleared | escalated
+    note = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "signal_id": self.signal_id,
+            "reviewer": self.reviewer,
+            "reviewer_role": self.reviewer_role,
+            "decision": self.decision,
+            "note": self.note,
+            "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S") if self.created_at else "",
         }

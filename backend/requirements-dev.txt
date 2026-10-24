@@ -1,0 +1,8 @@
+-r requirements.txt
+
+# Tests (cd backend && pytest)
+pytest
+httpx
+
+# Optional: lets tests/test_database_config.py run against a real PostgreSQL server instead of skipping
+pgserver

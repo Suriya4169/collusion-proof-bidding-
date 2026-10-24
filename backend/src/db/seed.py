@@ -1,15 +1,29 @@
 import os
 import json
-from .database import engine, SessionLocal, Base
+from .database import DATABASE_URL, engine, SessionLocal, Base, enable_row_level_security, should_enable_rls
 from .models import MSMEModel, TenderModel, DocumentModel
 
 DB_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "test_data", "databases")
 MSME_JSON = os.path.join(DB_DIR, "msme_database.json")
 TENDER_JSON = os.path.join(DB_DIR, "tender_database.json")
 
+def demo_users_enabled() -> bool:
+    """The well-known demo accounts (password ``Password123!``, including an admin) exist for local demos. They
+    are on by default in development and off when ``PROCUREGUARD_ENV=production``; ``SEED_DEMO_USERS`` overrides."""
+    from src.core.auth import is_production
+
+    explicit = (os.getenv("SEED_DEMO_USERS") or "").strip()
+    if explicit:  # an empty value (as docker compose passes when unset) means "use the default"
+        return explicit.lower() in ("1", "true", "yes")
+    return not is_production()
+
+
 def seed_database():
     """Initializes tables and seeds initial mock/real data if empty."""
     Base.metadata.create_all(bind=engine)
+    if DATABASE_URL and should_enable_rls(DATABASE_URL):
+        # Supabase publishes the public schema over its REST API; keep these tables private to this backend.
+        print(f"[Database] Row-level security enabled on {enable_row_level_security(engine)} tables.")
     db = SessionLocal()
     try:
         # 1. Seed MSMEs
@@ -184,7 +198,19 @@ def seed_database():
         from .models import UserModel
         from src.core.auth import hash_password
 
-        if db.query(UserModel).count() == 0:
+        if db.query(UserModel).count() == 0 and not demo_users_enabled():
+            # No demo accounts: create the first administrator from the environment, if one is configured.
+            admin_email = os.getenv("BOOTSTRAP_ADMIN_EMAIL", "").strip()
+            admin_password = os.getenv("BOOTSTRAP_ADMIN_PASSWORD", "")
+            if admin_email and len(admin_password) >= 12:
+                db.add(UserModel(email=admin_email, hashed_password=hash_password(admin_password),
+                                 full_name="System Administrator", role="admin", msme_id=None, is_active=True))
+                db.commit()
+                print(f"[Seed] Created bootstrap administrator {admin_email}.")
+            else:
+                print("[Seed] No users exist and demo accounts are off: set BOOTSTRAP_ADMIN_EMAIL and "
+                      "BOOTSTRAP_ADMIN_PASSWORD (12+ characters) to create the first administrator.")
+        elif db.query(UserModel).count() == 0:
             default_users = [
                 UserModel(
                     email="msme@apex.in",

@@ -1,4 +1,6 @@
+import logging
 import os
+import secrets
 import bcrypt
 import jwt
 from datetime import datetime, timedelta
@@ -10,9 +12,45 @@ from sqlalchemy.orm import Session
 from src.db.database import get_db
 from src.db.models import UserModel
 
-SECRET_KEY = os.getenv("JWT_SECRET", "procureguard-sovereign-ai-jwt-secret-key-2026")
+logger = logging.getLogger("procureguard.auth")
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = 24
+MIN_SECRET_LENGTH = 32
+
+_secret_key: Optional[str] = None
+
+
+def is_production() -> bool:
+    return os.getenv("PROCUREGUARD_ENV", "development").strip().lower() == "production"
+
+
+def get_secret_key() -> str:
+    """The JWT signing key, read from ``JWT_SECRET`` the first time it is needed.
+
+    It is read lazily because ``src.main`` loads ``.env`` after importing this module. There is no built-in
+    default: a key that sits in the source code is a key everyone can use to forge an admin token. In
+    development a random key is generated for the process (tokens stop working on restart, and are not shared
+    between workers); in production a missing or short key stops the server from starting.
+    """
+    global _secret_key
+    if _secret_key is None:
+        configured = os.getenv("JWT_SECRET", "").strip()
+        if configured and len(configured) >= MIN_SECRET_LENGTH:
+            _secret_key = configured
+        elif is_production():
+            raise RuntimeError(
+                f"JWT_SECRET must be set to a random value of at least {MIN_SECRET_LENGTH} characters "
+                "when PROCUREGUARD_ENV=production. Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(48))\""
+            )
+        else:
+            logger.warning(
+                "JWT_SECRET is %s; using a random key for this process. Logins will not survive a restart "
+                "and are not shared between workers. Set JWT_SECRET (>= %d characters) in .env.",
+                "too short" if configured else "not set", MIN_SECRET_LENGTH,
+            )
+            _secret_key = secrets.token_urlsafe(48)
+    return _secret_key
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
@@ -34,13 +72,13 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     to_encode = data.copy()
     expire = datetime.utcnow() + (expires_delta or timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS))
     to_encode.update({"exp": expire, "iat": datetime.utcnow()})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, get_secret_key(), algorithm=ALGORITHM)
     return encoded_jwt
 
 def decode_access_token(token: str) -> Optional[dict]:
     """Decodes and validates a JWT token."""
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, get_secret_key(), algorithms=[ALGORITHM])
         return payload
     except jwt.PyJWTError:
         return None
@@ -73,6 +111,16 @@ async def get_current_user(
         raise credentials_exception
 
     return user
+
+async def get_optional_user(
+    token: Optional[str] = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+) -> Optional[UserModel]:
+    """The authenticated user, or ``None`` when no token was sent. A token that is present but invalid is
+    rejected, never treated as anonymous."""
+    if not token:
+        return None
+    return await get_current_user(token=token, db=db)
 
 def require_roles(allowed_roles: List[str]):
     """

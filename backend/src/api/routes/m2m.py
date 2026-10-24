@@ -1,5 +1,6 @@
-import os
 import hashlib
+import hmac
+import os
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Header, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field, HttpUrl
@@ -12,28 +13,33 @@ from src.services.match_notifier import run_scan_job
 
 router = APIRouter(prefix="/api/m2m/v1", tags=["Machine-to-Machine (M2M) Sovereign Gateway"])
 
-M2M_MASTER_KEY = os.getenv("M2M_MASTER_KEY", "pg_sovereign_m2m_key_prod_2026")
+def _master_key() -> str:
+    """The M2M key from ``M2M_MASTER_KEY``, read per request (``.env`` is loaded after this module is imported).
+    There is no built-in default: without the variable the gateway is switched off instead of using a key that
+    sits in the source code."""
+    return os.getenv("M2M_MASTER_KEY", "").strip()
 
 async def verify_m2m_api_key(x_procureguard_key: Optional[str] = Header(None, alias="X-ProcureGuard-Key")):
     """
     Validates Machine-to-Machine API Key for automated government integration.
     """
+    master_key = _master_key()
+    if not master_key:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="The M2M gateway is not configured: set M2M_MASTER_KEY on the server."
+        )
     if not x_procureguard_key:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing M2M API Key header: 'X-ProcureGuard-Key'",
             headers={"WWW-Authenticate": "ApiKey"}
         )
-
-    if x_procureguard_key != M2M_MASTER_KEY:
-        # Check hash
-        hashed_key = hashlib.sha256(x_procureguard_key.encode()).hexdigest()
-        # Fallback check
-        if x_procureguard_key != M2M_MASTER_KEY:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Invalid or unauthorized M2M API Key."
-            )
+    if not hmac.compare_digest(x_procureguard_key.encode("utf-8"), master_key.encode("utf-8")):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid or unauthorized M2M API Key."
+        )
 
     return x_procureguard_key
 

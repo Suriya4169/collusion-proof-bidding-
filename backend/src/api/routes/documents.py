@@ -6,8 +6,9 @@ from sqlalchemy.orm import Session
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 
+from src.core.access import ensure_msme_write, get_current_user, msme_form_write, msme_path_read
 from src.db.database import get_db
-from src.db.models import DocumentModel, MSMEModel
+from src.db.models import DocumentModel, MSMEModel, UserModel
 from src.agents.module1.agent1_copilot.pdf_extractor import extract_text_from_pdf
 
 router = APIRouter(prefix="/api/documents", tags=["Procurement Readiness Vault"])
@@ -27,7 +28,7 @@ STANDARD_CHECKLIST = [
 ]
 
 @router.get("/{msme_id}", response_model=Dict[str, Any])
-async def get_document_vault(msme_id: str, db: Session = Depends(get_db)):
+async def get_document_vault(msme_id: str, db: Session = Depends(get_db), _: UserModel = Depends(msme_path_read)):
     """
     Returns the MSME's Document Vault status, uploaded files, missing documents,
     and calculates their overall Procurement Readiness Score (e.g., 71%).
@@ -90,7 +91,8 @@ async def upload_document(
     msme_id: str = Form(...),
     document_type: str = Form(...),
     expiry_date: Optional[str] = Form("No Expiry"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _: UserModel = Depends(msme_form_write),
 ):
     """
     Uploads a new certificate/document into the MSME's digital vault.
@@ -145,7 +147,8 @@ async def upload_document(
 async def extract_and_verify_document(
     file: UploadFile = File(...),
     msme_id: str = Form(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _: UserModel = Depends(msme_form_write),
 ):
     """
     Autonomous AI Document OCR & Verification:
@@ -261,13 +264,14 @@ async def extract_and_verify_document(
 
 
 @router.delete("/{document_id}", response_model=Dict[str, Any])
-async def delete_document(document_id: int, db: Session = Depends(get_db)):
+async def delete_document(document_id: int, db: Session = Depends(get_db), user: UserModel = Depends(get_current_user)):
     """
     Deletes a document from the vault.
     """
     doc = db.query(DocumentModel).filter(DocumentModel.id == document_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found.")
+    ensure_msme_write(db, user, doc.msme_id)
 
     if doc.file_path and os.path.exists(doc.file_path):
         try:
