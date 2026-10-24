@@ -10,7 +10,7 @@ from fastapi import Depends, FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
-from src.api.routes import msme, legal, matchmaker, tenders, documents, auth, m2m, jobs, cartel, behavior, notifications
+from src.api.routes import msme, legal, matchmaker, tenders, documents, auth, m2m, jobs, cartel, behavior, notifications, trust_optimizer
 from src.core.access import ANY_USER, REVIEWERS, require_roles
 
 try:  # MCP server for the bot-detection module; the platform runs without it if the `mcp` package is absent
@@ -122,6 +122,7 @@ app.include_router(tenders.router, dependencies=any_user)
 app.include_router(documents.router)  # per route
 app.include_router(m2m.router)  # X-ProcureGuard-Key
 app.include_router(jobs.router, dependencies=any_user)
+app.include_router(trust_optimizer.router, prefix="/api")
 if mcp_server:
     mcp_server.mount(app)  # /mcp/ : reviewers only (bearer JWT), see src/mcp_server.py
 
