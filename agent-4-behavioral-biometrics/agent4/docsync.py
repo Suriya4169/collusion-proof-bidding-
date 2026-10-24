@@ -7,6 +7,10 @@ In a Markdown file, wrap a number like this:
 The comments are invisible when rendered. ``python -m agent4 sync-docs`` rewrites the text
 between the markers from the metrics file, and ``tests/test_docs.py`` fails if any marker is
 out of date, so a retrain can never leave stale figures in the README or the model card.
+
+If ``metrics_iforest.json`` (written by ``python -m agent4 compare-detectors``) sits next to the metrics file, its
+contents are available to markers under the ``detector_comparison.`` prefix. It is merged in memory only; the
+metrics file itself is never modified.
 """
 
 from __future__ import annotations
@@ -17,6 +21,16 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Tuple
 
 MARKER = re.compile(r"<!--m:(?P<path>[\w.\[\]-]+) (?P<fmt>\w+)-->(?P<value>.*?)<!--/m-->", re.S)
+
+
+def load_metrics(metrics_path: Path) -> Dict[str, object]:
+    """The metrics file, plus the detector comparison under ``detector_comparison`` when it exists."""
+    metrics_path = Path(metrics_path)
+    metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
+    comparison = metrics_path.with_name("metrics_iforest.json")
+    if comparison.exists():
+        metrics["detector_comparison"] = json.loads(comparison.read_text(encoding="utf-8"))
+    return metrics
 
 
 def lookup(metrics: Dict[str, object], path: str):
@@ -65,7 +79,7 @@ def doc_files(root: Path) -> Iterable[Path]:
 
 
 def sync_docs(root: Path, metrics_path: Path) -> List[Path]:
-    metrics = json.loads(Path(metrics_path).read_text(encoding="utf-8"))
+    metrics = load_metrics(metrics_path)
     changed = []
     for f in doc_files(root):
         old = f.read_text(encoding="utf-8")

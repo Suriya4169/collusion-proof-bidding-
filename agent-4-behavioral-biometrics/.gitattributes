@@ -7,3 +7,4 @@
 # Git must never rewrite their line endings, or a Linux checkout / Docker build would fail the check.
 # This rule must stay AFTER the rules above: when attributes conflict, the last matching line wins.
 models/** -text
+models_iforest/** -text

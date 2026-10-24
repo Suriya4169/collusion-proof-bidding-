@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from agent4.cli import build_parser
-from agent4.docsync import MARKER, doc_files, stale_markers
+from agent4.docsync import MARKER, doc_files, load_metrics, stale_markers
 from agent4.evidence import describe_feature
 from agent4.features import FEATURES_BY_MODE
 
@@ -20,7 +20,7 @@ DOCS = list(doc_files(ROOT))
 def metrics():
     if not METRICS.exists():
         pytest.skip("run `python -m agent4 all` first")
-    return json.loads(METRICS.read_text(encoding="utf-8"))
+    return load_metrics(METRICS)
 
 
 @pytest.mark.parametrize("doc", DOCS, ids=lambda p: p.name)

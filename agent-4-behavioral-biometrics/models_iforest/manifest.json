@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "service_version": "2.0.0",
+  "model_version": "2.0.0+590795ce",
+  "created_utc": "2026-10-24T16:20:16Z",
+  "training_seed": 42,
+  "library_versions": {
+    "numpy": "2.2.6",
+    "scikit-learn": "1.7.1"
+  },
+  "files": {
+    "full": {
+      "path": "full.json",
+      "sha256": "c35bd72dfc7518f71443b5291cfceb40868334b6913dc6b69ce7669e6b0fe38f"
+    },
+    "flight_only": {
+      "path": "flight_only.json",
+      "sha256": "323d440e36199c2f4379413fc433128bc17923b340fd3722203179ca61048ed2"
+    }
+  }
+}

@@ -89,6 +89,25 @@ def _cmd_openapi(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_compare_detectors(args: argparse.Namespace) -> int:
+    from agent4.comparison import run_comparison, write_comparison_report
+    from agent4.pipeline import Paths
+
+    report_dir = Path(args.report_dir)
+    if args.render_only:  # rewrite the report from the saved numbers, without retraining
+        saved = json.loads((report_dir / "metrics_iforest.json").read_text(encoding="utf-8"))
+        write_comparison_report(saved, report_dir / "detector_comparison.md")
+        print(f"Rewrote {report_dir / 'detector_comparison.md'} from metrics_iforest.json")
+        return 0
+    result = run_comparison(Paths(DEFAULT_DATA_DIR, Path(args.model_dir), report_dir), seed=args.seed,
+                            sessions_per_class=args.sessions_per_class, iforest_dir=Path(args.iforest_dir))
+    report_dir.mkdir(parents=True, exist_ok=True)
+    (report_dir / "metrics_iforest.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
+    write_comparison_report(result, report_dir / "detector_comparison.md")
+    print(f"Wrote {report_dir / 'detector_comparison.md'} and {report_dir / 'metrics_iforest.json'}")
+    return 0
+
+
 def _cmd_benchmark(args: argparse.Namespace) -> int:
     from agent4.benchmark import run_benchmark
 
@@ -111,6 +130,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--no-raw", action="store_true", help="Do not write the raw event CSV")
     p.add_argument("--no-figures", action="store_true")
     p.set_defaults(func=_cmd_all)
+
+    p = sub.add_parser("compare-detectors", help="Train the Isolation Forest and compare it with the mixture on identical data")
+    p.add_argument("--seed", type=int, default=42)
+    p.add_argument("--sessions-per-class", type=int, default=6000)
+    p.add_argument("--model-dir", default=str(DEFAULT_MODEL_DIR), help="The shipped mixture bundle")
+    p.add_argument("--iforest-dir", default=str(DEFAULT_MODEL_DIR.parent / "models_iforest"), help="Where the forest bundle is written")
+    p.add_argument("--report-dir", default=str(DEFAULT_REPORT_DIR))
+    p.add_argument("--render-only", action="store_true", help="Rewrite detector_comparison.md from the saved metrics_iforest.json")
+    p.set_defaults(func=_cmd_compare_detectors)
 
     p = sub.add_parser("sync-docs", help="Refresh the numbers quoted in README/docs from reports/metrics.json")
     p.add_argument("--report-dir", default=str(DEFAULT_REPORT_DIR))

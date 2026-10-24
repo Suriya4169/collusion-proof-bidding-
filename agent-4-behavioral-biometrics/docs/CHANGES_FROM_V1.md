@@ -23,7 +23,7 @@ Version 1 is the project in `Final_year/`. Version 2 (this folder) is a rebuild,
 |---|---|---|
 | Features | 36, including counts, totals, minima, maxima, ranges (length-dependent) | 30 (15 flight-only), none length-dependent, plus distribution-shape features; onset ignored, idle gaps capped |
 | Training population | One human style | Three human styles (typical, fast, slow) |
-| Detector | Isolation Forest, 200 trees | Gaussian mixture density; Isolation Forest kept as a measured baseline in the model selection |
+| Detector | Isolation Forest, 200 trees | Gaussian mixture density. The Isolation Forest is kept as an exportable alternative (`models_iforest/`) and compared head to head in `reports/detector_comparison.md` |
 | Thresholds | One global threshold | Length-aware thresholds from held-out humans |
 | Risk scale | Arbitrary anchors (θ = 0.536 → 50, τ = 0.08) | 50 = human 95th percentile, 75 = human 99th, per session length |
 | False-alarm estimate | In-sample, 200 sessions | Out-of-sample, ~2,700 held-out sessions, 95% CI |

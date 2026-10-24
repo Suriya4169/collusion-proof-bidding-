@@ -57,7 +57,7 @@ All settings are environment variables.
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `AGENT4_MODEL_DIR` | `<project>/models` (`/app/models` in the image) | Folder with `manifest.json` and the bundles |
+| `AGENT4_MODEL_DIR` | `<project>/models` (`/app/models` in the image) | Folder with `manifest.json` and the bundles. Set it to `models_iforest` to serve the Isolation Forest of the original design instead of the mixture (same API; see `reports/detector_comparison.md` for the trade-off) |
 | `AGENT4_API_KEYS` | empty (auth off) | Comma-separated keys accepted in `X-API-Key` |
 | `AGENT4_REQUIRE_API_KEY` | `false` | `true` = refuse to start without a key (use in production) |
 | `AGENT4_MAX_EVENTS` | `2000` | Largest `intervals` array accepted per request |

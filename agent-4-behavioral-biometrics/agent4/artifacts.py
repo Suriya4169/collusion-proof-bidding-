@@ -24,6 +24,7 @@ from agent4.calibration import LengthCalibration
 from agent4.config import MODES, SERVICE_VERSION
 from agent4.detector import GaussianMixtureDetector
 from agent4.features import FEATURES_BY_MODE
+from agent4.iforest import IsolationForestDetector
 
 SCHEMA_VERSION = 1
 MANIFEST_NAME = "manifest.json"
@@ -33,11 +34,26 @@ class ModelIntegrityError(RuntimeError):
     """Raised when a model artifact is missing, malformed or does not match the manifest."""
 
 
+# Detector families a bundle may contain. Both are served with NumPy only.
+DETECTOR_TYPES = {
+    "gaussian_mixture": GaussianMixtureDetector,
+    "isolation_forest": IsolationForestDetector,
+}
+
+
+def detector_from_dict(data: Dict[str, object]):
+    """Rebuild the detector a bundle holds, chosen by its ``type`` (never by anything executable)."""
+    kind = data.get("type")
+    if kind not in DETECTOR_TYPES:
+        raise ModelIntegrityError(f"Unsupported detector type in bundle: {kind!r}")
+    return DETECTOR_TYPES[kind].from_dict(data)
+
+
 @dataclass
 class ModelBundle:
     mode: str
     feature_names: list
-    detector: GaussianMixtureDetector
+    detector: object  # GaussianMixtureDetector or IsolationForestDetector
     calibration: LengthCalibration
     target_fpr: float
     provenance: Dict[str, object]
@@ -74,7 +90,7 @@ class ModelBundle:
                 f"Feature order in the {mode!r} bundle does not match this code version; "
                 "retrain the model or deploy the matching code."
             )
-        detector = GaussianMixtureDetector.from_dict(data["detector"])
+        detector = detector_from_dict(data["detector"])
         if list(detector.feature_names) != names:
             raise ModelIntegrityError("Detector feature order differs from the bundle feature order.")
         return cls(
@@ -102,14 +118,18 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def save_models(bundles: Dict[str, ModelBundle], model_dir: Path, training_seed: Optional[int] = None) -> Dict[str, object]:
-    """Write every bundle and the manifest; returns the manifest."""
+def save_models(
+    bundles: Dict[str, ModelBundle], model_dir: Path, training_seed: Optional[int] = None, indent: Optional[int] = 1
+) -> Dict[str, object]:
+    """Write every bundle and the manifest; returns the manifest. ``indent=None`` writes compact JSON (used for
+    forests, whose many tree nodes would otherwise make the files several times larger)."""
     model_dir = Path(model_dir)
     model_dir.mkdir(parents=True, exist_ok=True)
     files: Dict[str, Dict[str, str]] = {}
     for mode, bundle in bundles.items():
         path = model_dir / f"{mode}.json"
-        path.write_text(json.dumps(bundle.to_dict(), indent=1), encoding="utf-8")
+        text = json.dumps(bundle.to_dict(), indent=indent, separators=(",", ":") if indent is None else None)
+        path.write_text(text, encoding="utf-8")
         files[mode] = {"path": path.name, "sha256": sha256_file(path)}
 
     combined = hashlib.sha256("".join(files[m]["sha256"] for m in sorted(files)).encode()).hexdigest()

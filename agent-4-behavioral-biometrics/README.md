@@ -113,6 +113,7 @@ Type a bid yourself, start bots from the dashboard, and compare. The automated t
 |---|---|
 | `agent4/` | The Python package: simulator, features, detector, calibration, scorer, API service, evaluation, CLI |
 | `models/` | The trained model: one JSON bundle per mode plus `manifest.json` with SHA-256 hashes (no pickle) |
+| `models_iforest/` | The same for the Isolation Forest of the original design, trained and calibrated on identical data; serve it with `AGENT4_MODEL_DIR`. Head-to-head results: `reports/detector_comparison.md` |
 | `frontend/` | The browser collector `biometrics.js`, a demo page, and its in-browser self-test |
 | `demo/` | The demo website (bid portal, live dashboard, bot lab) and the automated browser bot tests; not part of the deployable service |
 | `reports/` | `evaluation_report.md`, `metrics.json`, figures, model-selection results, latency benchmark, OpenAPI spec |
