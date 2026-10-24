@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Bell, Handshake, Target } from "lucide-react";
 import { Pill } from "./ui";
-import { apiRequest, getActiveMsmeId, type MatchNotification, type NotificationsResponse } from "@/lib/api";
+import { apiRequest, getActiveMsmeId, hasSession, type MatchNotification, type NotificationsResponse } from "@/lib/api";
 
 const POLL_MS = 30_000;
 
@@ -37,7 +37,7 @@ export default function NotificationBell() {
   }, []);
 
   const load = useCallback(async () => {
-    if (!msmeId) return;
+    if (!msmeId || !hasSession()) return;
     try {
       const res = await apiRequest<NotificationsResponse>(`/api/notifications/${encodeURIComponent(msmeId)}?limit=20`);
       setData(res.data);

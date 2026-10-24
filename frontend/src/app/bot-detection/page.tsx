@@ -2,10 +2,13 @@
 
 import { useRef, useState } from "react";
 import { Bot, Fingerprint, RotateCcw } from "lucide-react";
-import { Btn, ErrorNotice, JsonDrawer, PageHeader, PageShell, Panel, Pill, Spinner, Stat, riskTone, toneText, type Tone } from "@/components/ui";
-import { apiRequest, errorMessage, type BehaviorResponse } from "@/lib/api";
+import { Btn, ErrorNotice, JsonDrawer, PageHeader, PageShell, Panel, Pill, Spinner, Stat, toneText, type Tone } from "@/components/ui";
+import BehaviorReviewQueue from "@/components/BehaviorReviewQueue";
+import { AGENT4_CATEGORY_TONE, apiRequest, errorMessage, type BehaviorResponse } from "@/lib/api";
 
-const MIN_EVENTS = 5;
+const MIN_EVENTS = 10; // Agent 4 returns "insufficient_data" below this
+const MODERATE_FROM = 50; // risk 50 = the 95th percentile of genuine humans
+const HIGH_FROM = 75; // risk 75 = the 99th percentile
 const BOT_INTERVAL_MS = 12;
 const BOT_HOLD_MS = 8;
 const BOT_EVENTS = 45;
@@ -128,7 +131,7 @@ export default function BotDetectionPage() {
   };
 
   const score = result?.behavioral_risk_score;
-  const tone = riskTone(score ?? 0);
+  const tone: Tone = AGENT4_CATEGORY_TONE[result?.risk_category ?? ""] ?? "neutral";
 
   return (
     <PageShell>
@@ -196,7 +199,11 @@ export default function BotDetectionPage() {
                     <span className="text-base text-slate-500"> / 100</span>
                   </div>
                   <div className="text-right text-[11px] text-slate-500">
-                    {result.behavioral_anomaly ? "Flagged for human audit" : "Within genuine-human band"}
+                    {result.status !== "scored"
+                      ? "Not enough keystrokes to score"
+                      : result.behavioral_anomaly
+                        ? "Flagged for human audit"
+                        : "Within genuine-human band"}
                   </div>
                 </div>
                 <div className="relative mt-3 h-2.5 rounded bg-slate-800" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={score ?? 0} aria-label="Behavioural risk">
@@ -204,14 +211,14 @@ export default function BotDetectionPage() {
                     className={`h-full rounded ${tone === "fail" ? "bg-rose-500" : tone === "warn" ? "bg-amber-500" : "bg-emerald-500"}`}
                     style={{ width: `${score ?? 0}%`, transition: "width 500ms ease" }}
                   />
-                  {[40, 70].map((t) => (
+                  {[MODERATE_FROM, HIGH_FROM].map((t) => (
                     <span key={t} className="absolute top-[-3px] h-4 w-px bg-slate-500" style={{ left: `${t}%` }} />
                   ))}
                 </div>
                 <div className="mt-1 flex justify-between font-mono text-[9.5px] text-slate-600">
                   <span>0</span>
-                  <span style={{ marginLeft: "28%" }}>40 moderate</span>
-                  <span>70 high</span>
+                  <span style={{ marginLeft: "28%" }}>{MODERATE_FROM} moderate</span>
+                  <span>{HIGH_FROM} high</span>
                   <span>100</span>
                 </div>
               </Panel>
@@ -254,6 +261,8 @@ export default function BotDetectionPage() {
           {result && <JsonDrawer title="Response" data={result} filename="behavior-response.json" />}
         </div>
       )}
+
+      <BehaviorReviewQueue />
     </PageShell>
   );
 }

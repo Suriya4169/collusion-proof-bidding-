@@ -35,11 +35,38 @@ function describeBody(body: FastApiErrorBody | null, fallback: string): string {
   return body.message ?? fallback;
 }
 
+const TOKEN_KEY = "procureguard_token"; // written by the login page
+
+/** True when a login token is stored. Background polling should not run without one (the API would answer 401). */
+export function hasSession(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return Boolean(window.localStorage.getItem(TOKEN_KEY));
+  } catch {
+    return false;
+  }
+}
+
+/** Attach the logged-in user's JWT, when there is one, so role-protected routes can identify the caller. */
+function withAuth(init?: RequestInit): RequestInit | undefined {
+  if (typeof window === "undefined") return init;
+  let token: string | null = null;
+  try {
+    token = window.localStorage.getItem(TOKEN_KEY);
+  } catch {
+    token = null;
+  }
+  if (!token) return init;
+  const headers = new Headers(init?.headers);
+  if (!headers.has("Authorization")) headers.set("Authorization", `Bearer ${token}`);
+  return { ...init, headers };
+}
+
 export async function apiRequest<T>(path: string, init?: RequestInit): Promise<ApiResult<T>> {
   const started = performance.now();
   let res: Response;
   try {
-    res = await fetch(`${API_BASE}${path}`, init);
+    res = await fetch(`${API_BASE}${path}`, withAuth(init));
   } catch {
     throw new ApiError(
       `Cannot reach the ProcureGuard API at ${API_BASE}. Start the backend (uvicorn src.main:app --port 8000) and retry.`,
@@ -55,6 +82,9 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<A
   }
 
   if (!res.ok) {
+    if (res.status === 401 && path !== "/api/auth/login") {
+      throw new ApiError("You are not signed in, or your session has expired. Sign in again from the Login page.", 401);
+    }
     throw new ApiError(
       describeBody(body as FastApiErrorBody | null, `Server returned HTTP ${res.status} ${res.statusText}`),
       res.status,
@@ -186,6 +216,55 @@ export interface BehaviorResponse {
   behavioral_evidence: string[];
   model_version: string;
   message?: string;
+}
+
+/** Agent 4 risk category -> badge tone (LOW < 50, MODERATE 50-75, HIGH >= 75). */
+export const AGENT4_CATEGORY_TONE: Record<string, "pass" | "warn" | "fail"> = {
+  LOW_ANOMALY: "pass",
+  MODERATE_ANOMALY: "warn",
+  HIGH_ANOMALY: "fail",
+};
+
+/** GET /api/behavior/signals · the reviewer queue (reviewers only) */
+export type ReviewState = "pending" | "cleared" | "escalated";
+export interface BehaviorSignal {
+  id: number;
+  reference: string;
+  session_id: string;
+  msme_id: string | null;
+  status: string; // scored | insufficient_data | no_timing | invalid_timing | unavailable
+  scoring_mode: string | null;
+  behavioral_risk_score: number | null;
+  risk_category: string | null;
+  behavioral_anomaly: boolean | null;
+  reliability: "low" | "medium" | "high" | null;
+  events_received: number;
+  behavioral_evidence: string[];
+  message: string | null;
+  model_version: string | null;
+  needs_review: boolean;
+  review_state: ReviewState | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  review_note: string | null;
+  created_at: string;
+}
+export interface BehaviorSignalList {
+  count: number;
+  signals: BehaviorSignal[];
+}
+/** GET /api/behavior/summary */
+export interface BehaviorSummary {
+  total: number;
+  scored: number;
+  flagged: number;
+  flag_rate: number | null;
+  expected_flag_rate_for_genuine_users: number;
+  pending_review: number;
+  escalated: number;
+  cleared: number;
+  by_status: Record<string, number>;
+  by_category: Record<string, number>;
 }
 
 /** GET /api/matchmaker/{id} */
