@@ -109,6 +109,7 @@ Contributed as a complete package (model artefacts, evaluation reports, demo, te
 - Input: only **timings**. Flight times (`intervals`, key release → next key press) and dwell times (`hold_durations`, key down → up), both in milliseconds. Typed characters are never sent, which matches the privacy posture in `agent-4-behavioral-biometrics/docs/privacy_and_security.md`.
 - `BehaviorScorer` selects a scoring mode (`full` or `flight_only`) by available data and session length, and returns a **0–100 behavioural risk score**, a `risk_category`, a `reliability` rating (`low`/`medium`/`high`), counts of events received and scored, and plain-language `behavioral_evidence` bullets (for example, robotic timing clustering).
 - It is advisory: it flags sessions for audit and never blocks a bid.
+- Access control: `POST /api/behavior/analyze` and `GET /api/behavior/signals` are for `government_auditor`/`admin`; `POST /api/behavior/submit` (records the signal for a submitted bid, returns an acknowledgement only) is for `msme`/`admin`. A bid with no timing at all is recorded as its own `no_timing` signal. If Agent 4 is missing the platform still starts and signals are recorded as `unavailable`. Details: [AGENT4_PLATFORM_WIRING.md](AGENT4_PLATFORM_WIRING.md).
 - Demonstration: the portal's *Simulate automated script bot* button sends 45 events at a fixed 12 ms flight / 8 ms hold. That is zero variance, which no human produces, so the verdict is high risk.
 
 ### 2.4b Agent 3 — Solvency and ledger verification (`solvency-calculator/`)
@@ -132,12 +133,13 @@ Verdict: any CRITICAL → `FAILED`; else any HIGH → `SUSPICIOUS`; else `PASSED
 
 | Component | Files | Notes |
 | :-- | :-- | :-- |
-| **JWT + RBAC** | `routes/auth.py`, `core/auth.py` | bcrypt (12 rounds) password hashing; HS256 JWT; roles `msme`, `government_auditor`, `admin`; a `require_roles([...])` dependency is provided. Secret from `JWT_SECRET`. **Current limitation:** only `GET /api/auth/me` enforces a token; the business endpoints are open and `require_roles` is not yet applied to any route |
-| **M2M Sovereign Gateway** | `routes/m2m.py` | Prefix `/api/m2m/v1`. Authenticated by the `X-ProcureGuard-Key` header, compared with `M2M_MASTER_KEY`. Missing key → 401; wrong key → 403 |
+| **JWT + RBAC** | `routes/auth.py`, `core/auth.py` | bcrypt (12 rounds) password hashing; HS256 JWT; roles `msme`, `government_auditor`, `admin`; a `require_roles([...])` dependency is provided. Secret from `JWT_SECRET` (no built-in default; production refuses to start without it). Every route except login, register and the health checks requires a token; roles and per-enterprise ownership are enforced through `core/access.py`. See [ACCESS_CONTROL.md](ACCESS_CONTROL.md) |
+| **M2M Sovereign Gateway** | `routes/m2m.py` | Prefix `/api/m2m/v1`. Authenticated by the `X-ProcureGuard-Key` header, compared in constant time with `M2M_MASTER_KEY`. Missing key → 401; wrong key → 403; no key configured on the server → 503 |
 | **Async job queue** | `routes/jobs.py` | `POST /api/jobs/tender-analyze` returns 202 with a `job_id`; `GET /api/jobs/{job_id}` reports status and progress. Used for 150-page tenders |
-| **Persistence** | `db/database.py`, `db/models.py`, `db/seed.py` | SQLAlchemy. SQLite file by default; Postgres when `DATABASE_URL` is set. Seeded on startup |
+| **Persistence** | `db/database.py`, `db/models.py`, `db/seed.py` | SQLAlchemy. SQLite file by default; PostgreSQL, including a managed Supabase project, when `DATABASE_URL` is set (TLS, pooler handling and row-level security on every table for Supabase: [SUPABASE_SETUP.md](SUPABASE_SETUP.md)). Seeded on startup |
 | **Orchestrator** | `orchestrator/graph.py`, `state.py` | LangGraph `StateGraph`, six nodes, linear edges, errors short-circuit via `state["error"]` |
-| **Containers** | `docker-compose.yml`, `backend/Dockerfile`, `frontend/Dockerfile` | Postgres 16 + backend + frontend |
+| **Containers** | `docker-compose.yml`, `backend/Dockerfile`, `frontend/Dockerfile` | Postgres 16 (optional profile) + backend + frontend. The backend image is built from the repository root because it needs the `cartel-graph/`, `agent-4-behavioral-biometrics/` and `solvency-calculator/` folders |
+| **MCP server** | `backend/src/mcp_server.py` | Model Context Protocol server for the bot-detection module: read-only tools to score typing timing and read stored signals, an interpretation-guide resource and a review prompt. Mounted at `/mcp/` (reviewers only, platform JWT as a Bearer token) and runnable over stdio with `python -m src.mcp_server`. Details in [AGENT4_PLATFORM_WIRING.md](AGENT4_PLATFORM_WIRING.md) |
 
 ---
 
@@ -191,7 +193,10 @@ Interactive reference: `http://localhost:8000/docs`. JSON field casing differs p
 | `POST /api/payments/track` | – | multipart: `invoice_file`, `receipt_file`, `company_name` | **camelCase** `{daysOverdue, isPenaltyApplicable, penaltyAmountInr, demandNoticeDraft}` |
 | `POST /api/diff` | – | multipart: `original_pdf`, `corrigendum_pdf`, `days_before_deadline` | **snake_case** `{overall_manipulation_probability, risk_level, flagged_clauses[], days_before_deadline, temporal_multiplier}` |
 | `GET /api/cartel/bidders` · `GET/POST /api/cartel/analyze` · `GET/POST /api/cartel/graph-render` · `POST /api/cartel/bidders` · `GET /api/cartel/health` | – | POST variants take `{bidders:[…]}` | `{bidders,count}`; `{cartel_detected,flagged_networks,anomaly_scores}`; `{bidders,metadata,bipartite,anomalyScores}` |
-| `POST /api/behavior/analyze` · `GET /api/behavior/health` | – | `{session_id, intervals[], hold_durations[]}` (ms) | `{session_id,status,scoring_mode,behavioral_risk_score,risk_category,behavioral_anomaly,reliability,events_received,events_scored,behavioral_evidence[],model_version}` |
+| `POST /api/behavior/analyze` | auditor, admin | `{session_id, intervals[], hold_durations[]}` (ms) | `{session_id,status,scoring_mode,behavioral_risk_score,risk_category,behavioral_anomaly,reliability,events_received,events_scored,behavioral_evidence[],model_version}` |
+| `POST /api/behavior/submit` | msme, admin | `{reference, session_id?, intervals?[], hold_durations?[]}` (ms; timing optional) | `201 {received,reference,session_id,recorded_at}` (no score) |
+| `GET /api/behavior/signals` | auditor, admin | query: `reference`, `needs_review`, `limit` | `{count, signals[{reference,status,behavioral_risk_score,risk_category,behavioral_anomaly,needs_review,behavioral_evidence[],…}]}` |
+| `GET /api/behavior/health` | – | – | `200` model loaded, `503` Agent 4 unavailable |
 | `GET /api/matchmaker/{msme_id}` | – | – | `{msme_profile, solo_opportunities{count,tenders[{tender,score}]}, joint_venture_opportunities{count,tenders[{tender,recommended_partner}]}, missed_opportunities}` |
 | `GET /api/msme/all` · `POST /api/msme/register` | – | register: JSON, Udyam `UDYAM-XX-00-0000000` and 15-char GSTIN validated | list / created profile |
 | `GET /api/tenders` · `GET /api/tenders/{id}` · `POST /api/tenders` · `POST /api/tenders/upload-pdf` | – | – | tender records |
@@ -248,11 +253,15 @@ Environment variables:
 | Variable | Purpose | Default |
 | :-- | :-- | :-- |
 | `GEMINI_API_KEY` | Gemini extraction, OCR dates, clause classification | required for those endpoints |
-| `M2M_MASTER_KEY` | Value expected in `X-ProcureGuard-Key` | development default in `m2m.py`; **set your own** |
-| `JWT_SECRET` | JWT signing | development default; **set your own** |
-| `DATABASE_URL` | Postgres URL | SQLite file `backend/procureguard.db` |
+| `M2M_MASTER_KEY` | Value expected in `X-ProcureGuard-Key` | none: the M2M gateway is off until you set it |
+| `JWT_SECRET` | JWT signing (32+ characters) | development: random per process; production: required |
+| `DATABASE_URL` | PostgreSQL or Supabase URL | SQLite file `backend/procureguard.db` |
+| `PROCUREGUARD_ENV` | `development` or `production` (no demo accounts, mandatory `JWT_SECRET`) | `development` |
+| `BOOTSTRAP_ADMIN_EMAIL`, `BOOTSTRAP_ADMIN_PASSWORD` | First administrator when demo accounts are off | unset |
+| `CORS_ORIGINS` | Allowed browser origins | `http://localhost:3000,http://127.0.0.1:3000` |
+| `MCP_ALLOWED_HOSTS` | Host names clients use to reach `/mcp/` | localhost only |
 
-Docker alternative: `docker compose up --build` starts Postgres, the API and the frontend. `docker-compose.yml` contains placeholder development secrets, so replace them before any shared deployment.
+Docker alternative: copy `.env.example` to `.env`, fill in `JWT_SECRET`, `M2M_MASTER_KEY` and `DATABASE_URL`, then `docker compose up --build`. Compose refuses to start if a required secret is missing; no secret is stored in `docker-compose.yml`. For Supabase leave `COMPOSE_PROFILES` empty so the local Postgres container is not started.
 
 Production check for the frontend: `cd frontend && npm run build`.
 
