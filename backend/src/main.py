@@ -94,7 +94,7 @@ This production API powers the ProcureGuard AI platform:
 
 # CORS middleware for the Next.js frontend. Allowed origins come from CORS_ORIGINS (comma separated);
 # the default is the local dev server. Logins travel in the Authorization header, not in cookies.
-CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",") if o.strip()]
+CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001").split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
