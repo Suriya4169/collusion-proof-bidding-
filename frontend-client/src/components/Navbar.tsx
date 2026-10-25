@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, ExternalLink, ShieldCheck, UserPlus } from "lucide-react";
+import { Building2, ExternalLink, ShieldCheck, UserCheck, UserPlus } from "lucide-react";
 import RegisterMsmeModal from "./RegisterMsmeModal";
 import NotificationBell from "./NotificationBell";
 import { StatusDot, type Tone } from "./ui";
@@ -12,10 +12,10 @@ import { apiRequest, type HealthResponse } from "@/lib/api";
 const VENDOR_LINKS = [
   { href: "/marketplace", label: "Tenders" },
   { href: "/dashboard", label: "Compliance Auditor" },
-  { href: "/payment-tracker", label: "Payment Recovery" },
   { href: "/legal-diff", label: "Corrigendum Diff" },
   { href: "/matchmaker", label: "Matchmaker" },
   { href: "/documents", label: "Readiness Vault" },
+  { href: "/profile", label: "Profile & Assets" },
 ];
 
 interface HealthState {
@@ -103,6 +103,15 @@ export default function Navbar() {
             </div>
 
             <NotificationBell />
+
+            <Link
+              href="/profile"
+              className="flex items-center gap-1.5 rounded border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-300 hover:bg-emerald-500/20 transition-colors"
+              title="Cartel & Udyam Profile"
+            >
+              <UserCheck className="h-3.5 w-3.5 text-emerald-400" />
+              <span>Cartel Profile</span>
+            </Link>
 
             <button
               onClick={() => setIsModalOpen(true)}

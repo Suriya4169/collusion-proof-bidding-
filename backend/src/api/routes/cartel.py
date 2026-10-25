@@ -5,8 +5,20 @@ import os
 import sys
 from pathlib import Path
 from typing import List, Dict, Any, Optional
-from fastapi import APIRouter, HTTPException, UploadFile, File, Query, Response
+from fastapi import APIRouter, HTTPException, UploadFile, File, Query, Response, Request
 from fastapi.responses import StreamingResponse
+
+def get_client_ip(request: Request) -> str:
+    """Extract real client IP address from proxy headers or connection host."""
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    real_ip = request.headers.get("x-real-ip")
+    if real_ip:
+        return real_ip.strip()
+    if request.client and request.client.host:
+        return request.client.host
+    return "127.0.0.1"
 
 # Add cartel-graph to sys.path so we can cleanly import its modules
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
@@ -30,23 +42,105 @@ router = APIRouter(
     tags=["Agent 2C: Cartel & Collusion Graph Intelligence"]
 )
 
+CSV_FILE = CARTEL_ROOT / "data" / "bidders.csv"
 DATA_FILE = CARTEL_ROOT / "data" / "bidders.json"
 BENCHMARK_FILE = CARTEL_ROOT / "data" / "bidders_benchmark.json"
 
-def _load_bidders() -> list[dict]:
-    if DATA_FILE.exists():
+def _load_bidders(tender_id: Optional[str] = None) -> list[dict]:
+    bidders = []
+    if CSV_FILE.exists():
+        grouped: dict[str, dict] = {}
+        try:
+            with CSV_FILE.open("r", encoding="utf-8-sig") as file:
+                reader = csv.DictReader(file)
+                for row in reader:
+                    bidder_id = (row.get("bidder_id") or "").strip()
+                    if not bidder_id:
+                        continue
+                    t_id = (row.get("tender_id") or "GEM/2026/B/9292805").strip()
+                    name = (row.get("name") or bidder_id).strip()
+                    owner = (row.get("beneficial_owner") or "").strip()
+                    ip = (row.get("ip_address") or "").strip() or None
+                    bank = (row.get("bank_routing_code") or "").strip() or None
+                    asset = (row.get("declared_asset") or "").strip()
+
+                    if bidder_id not in grouped:
+                        grouped[bidder_id] = {
+                            "bidder_id": bidder_id,
+                            "name": name,
+                            "tender_id": t_id,
+                            "beneficial_owners": set(),
+                            "submission_metadata": {
+                                "ip_address": ip,
+                                "bank_routing_code": bank,
+                            },
+                            "declared_assets": set()
+                        }
+                    curr = grouped[bidder_id]
+                    if name: curr["name"] = name
+                    if t_id: curr["tender_id"] = t_id
+                    if ip and not curr["submission_metadata"]["ip_address"]:
+                        curr["submission_metadata"]["ip_address"] = ip
+                    if bank and not curr["submission_metadata"]["bank_routing_code"]:
+                        curr["submission_metadata"]["bank_routing_code"] = bank
+                    if owner:
+                        for o in owner.replace(";", ",").replace("|", ",").split(","):
+                            if o.strip(): curr["beneficial_owners"].add(o.strip())
+                    if asset:
+                        for a in asset.replace(";", ",").replace("|", ",").split(","):
+                            if a.strip(): curr["declared_assets"].add(a.strip())
+
+            for b_id, b in grouped.items():
+                bidders.append({
+                    "bidder_id": b["bidder_id"],
+                    "name": b["name"],
+                    "tender_id": b.get("tender_id", "GEM/2026/B/9292805"),
+                    "beneficial_owners": [{"name": o} for o in sorted(b["beneficial_owners"])],
+                    "submission_metadata": b["submission_metadata"],
+                    "declared_assets": sorted(list(b["declared_assets"]))
+                })
+        except Exception:
+            pass
+
+    if not bidders and DATA_FILE.exists():
         try:
             with DATA_FILE.open("r", encoding="utf-8") as file:
-                return json.load(file)
+                raw = json.load(file)
+                for b in raw:
+                    if "tender_id" not in b:
+                        b["tender_id"] = "GEM/2026/B/9292805"
+                bidders = raw
         except Exception:
-            return []
-    return []
+            bidders = []
+
+    # If tender_id is provided and not "ALL", filter bidders participating in this tender
+    if tender_id and tender_id.strip() and tender_id.upper() != "ALL":
+        target = tender_id.strip()
+        filtered = [b for b in bidders if b.get("tender_id") == target]
+        return filtered
+
+    return bidders
+
 
 def _save_bidders(bidders: list[dict]) -> None:
-    DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
+    CSV_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with CSV_FILE.open("w", encoding="utf-8", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow(["tender_id", "bidder_id", "name", "beneficial_owner", "ip_address", "bank_routing_code", "declared_asset"])
+        for b in bidders:
+            t_id = b.get("tender_id") or "GEM/2026/B/9292805"
+            b_id = b["bidder_id"]
+            name = b.get("name", b_id)
+            owners = ", ".join(o["name"] for o in b.get("beneficial_owners", []))
+            ip = b.get("submission_metadata", {}).get("ip_address", "") or ""
+            bank = b.get("submission_metadata", {}).get("bank_routing_code", "") or ""
+            assets = ", ".join(b.get("declared_assets", []))
+            writer.writerow([t_id, b_id, name, owners, ip, bank, assets])
+
     with DATA_FILE.open("w", encoding="utf-8") as file:
         json.dump(bidders, file, indent=2)
         file.write("\n")
+
 
 @router.get("/health", summary="Cartel Graph Engine Health Status")
 def health_check():
@@ -57,15 +151,52 @@ def health_check():
         "active_bidders": len(_load_bidders())
     }
 
-@router.get("/bidders", summary="Get all registered bidding entities")
-def get_bidders():
+
+@router.get("/tenders", summary="Get list of tenders with active bidding networks")
+def get_cartel_tenders():
     bidders = _load_bidders()
-    return {"bidders": bidders, "count": len(bidders)}
+    tenders_set = set()
+    for b in bidders:
+        t_id = b.get("tender_id")
+        if t_id:
+            tenders_set.add(t_id)
+    # Ensure default tenders are listed
+    tenders_set.add("GEM/2026/B/9292805")
+    tenders_set.add("T2001")
+    tenders_set.add("T2003")
+    return {
+        "tenders": sorted(list(tenders_set)),
+        "count": len(tenders_set)
+    }
+
+
+@router.get("/client-ip", summary="Get true detected client IP address")
+def get_caller_ip(request: Request):
+    ip = get_client_ip(request)
+    return {
+        "ip": ip,
+        "is_loopback": ip in ("127.0.0.1", "::1", "localhost"),
+        "origin": "network_telemetry"
+    }
+
+
+@router.get("/bidders", summary="Get all registered bidding entities")
+def get_bidders(tender_id: Optional[str] = Query(None, description="Optional tender ID to filter bidders competing for a specific tender")):
+    bidders = _load_bidders(tender_id=tender_id)
+    return {"bidders": bidders, "count": len(bidders), "tender_id": tender_id or "ALL"}
+
 
 @router.post("/bidders", response_model=BidderProfile, summary="Register or update a bidder profile")
-def add_bidder(payload: BidderProfile):
+def add_bidder(payload: BidderProfile, request: Request):
     bidders = _load_bidders()
     bidder = payload.model_dump()
+    if not bidder.get("tender_id"):
+        bidder["tender_id"] = "GEM/2026/B/9292805"
+    # If client didn't supply an IP or it is empty, automatically bind the real client IP:
+    meta = bidder.get("submission_metadata") or {}
+    if not meta.get("ip_address"):
+        meta["ip_address"] = get_client_ip(request)
+        bidder["submission_metadata"] = meta
     for index, existing in enumerate(bidders):
         if existing["bidder_id"] == bidder["bidder_id"]:
             bidders[index] = bidder
@@ -234,9 +365,9 @@ async def upload_bidders_csv(file: UploadFile = File(...), replace: bool = Query
         "bidders": final_bidders
     }
 
-@router.get("/analyze", response_model=ComplianceSummary, summary="Analyze active bidding pool for cartelization")
-def analyze_demo_bidders():
-    bidders = _load_bidders()
+@router.get("/analyze", response_model=ComplianceSummary, summary="Analyze active bidding pool for cartelization (per tender or all)")
+def analyze_demo_bidders(tender_id: Optional[str] = Query(None, description="Optional tender ID to evaluate collusion specific to that tender")):
+    bidders = _load_bidders(tender_id=tender_id)
     if not bidders:
         return ComplianceSummary(cartel_detected=False, flagged_networks=[], anomaly_scores={})
     return build_cartel_summary(bidders)
@@ -246,9 +377,9 @@ def analyze_bidders(payload: BatchBidderRequest):
     bidders = [bidder.model_dump() for bidder in payload.bidders]
     return build_cartel_summary(bidders)
 
-@router.get("/graph-render", response_model=GraphRenderPayload, summary="Get visual bipartite graph nodes and links (Active pool)")
-def graph_render_demo():
-    bidders = _load_bidders()
+@router.get("/graph-render", response_model=GraphRenderPayload, summary="Get visual bipartite graph nodes and links (per tender or all)")
+def graph_render_demo(tender_id: Optional[str] = Query(None, description="Optional tender ID to render bipartite network specific to that tender")):
+    bidders = _load_bidders(tender_id=tender_id)
     if not bidders:
         return GraphRenderPayload(bidders=[], metadata=[], bipartite=[], anomalyScores={})
     anomaly_scores = compute_bidder_scores(bidders)

@@ -13,7 +13,6 @@ interface Entry {
 
 const VENDOR: Entry[] = [
   { href: "/dashboard", title: "Compliance Auditor", desc: "Clause-level eligibility against a tender PDF with page citations.", ref: "POST /api/tender/analyze", Icon: FileSearch },
-  { href: "/payment-tracker", title: "Payment Recovery", desc: "45-day default, 3× RBI compounding interest and a draft §16 notice.", ref: "POST /api/payments/track", Icon: Scale },
   { href: "/legal-diff", title: "Corrigendum Diff", desc: "Semantic redline of amended clauses with a tampering risk index.", ref: "POST /api/diff", Icon: GitCompare },
   { href: "/matchmaker", title: "Matchmaker", desc: "Solo-qualified tenders and joint-venture consortium partners.", ref: "GET /api/matchmaker/{id}", Icon: Handshake },
   { href: "/documents", title: "Readiness Vault", desc: "Udyam, GSTIN, PAN, ISO and solvency expiry tracking.", ref: "GET /api/documents/{id}", Icon: FolderCheck },

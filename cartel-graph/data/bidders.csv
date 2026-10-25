@@ -1,4 +1,9 @@
-bidder_id,name,beneficial_owner,ip_address,bank_routing_code,declared_asset
-B001,Alpha Construction Ltd,Jane Doe,203.0.113.5,021000021,ASSET-1001
-B002,Beta Infra Works,Jane Doe,203.0.113.5,011401533,ASSET-1001
-B003,Gamma Civil Co,John Silva,203.0.113.5,071000013,ASSET-3001
+tender_id,bidder_id,name,beneficial_owner,ip_address,bank_routing_code,declared_asset
+GEM/2026/B/9292805,B001,Apex Precision Engineering Ltd,"Jane Doe, Rajesh Sharma",203.0.113.5,021000021,"ASSET-CNC-801, ASSET-1001"
+GEM/2026/B/9292805,B002,Beta Machined Works,"Jane Doe, Paul Green",203.0.113.5,011401533,"ASSET-1001, ASSET-7777"
+GEM/2026/B/9292805,B003,Sahyadri Heavy Engineering,Vikramaditya Patil,203.0.113.5,071000013,"ASSET-3001, ASSET-4001"
+GEM/2026/B/9292805,B004,Delta Aerospace Components,Raj Kapoor,198.51.100.22,065400137,ASSET-5001
+GEM/2026/B/9292805,B008,Dynamic Syndicate Works,Jane Doe,203.0.113.5,999000999,"ASSET-1001, ASSET-9001"
+T2001,B005,Kavach Cloud Systems,Amitabh Verma,192.0.2.91,021000021,ASSET-SERVER-RACK-01
+T2001,B006,Zenith Cloud Infrastructure,Tom Wu,192.0.2.14,091000019,ASSET-7001
+T2001,B007,Meridian Data Networks,Amitabh Verma,192.0.2.91,121000358,"ASSET-SERVER-RACK-01, ASSET-8001"

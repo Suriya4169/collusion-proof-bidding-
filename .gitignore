@@ -26,3 +26,6 @@ frontend/.next/
 # Uploads created when the API is launched from the repo root
 test_data/uploads/
 test_data/vault_storage/
+scratch_*.py
+test_pdfs/
+test_files16_all.py

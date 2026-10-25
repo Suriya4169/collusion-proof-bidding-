@@ -1,13 +1,14 @@
 [
   {
+    "tender_id": "GEM/2026/B/9292805",
     "bidder_id": "B001",
-    "name": "Alpha Construction Ltd",
+    "name": "Apex Precision Engineering Ltd",
     "beneficial_owners": [
       {
         "name": "Jane Doe"
       },
       {
-        "name": "Robert Chen"
+        "name": "Rajesh Sharma"
       }
     ],
     "submission_metadata": {
@@ -15,13 +16,14 @@
       "bank_routing_code": "021000021"
     },
     "declared_assets": [
-      "ASSET-1001",
-      "ASSET-2001"
+      "ASSET-CNC-801",
+      "ASSET-1001"
     ]
   },
   {
+    "tender_id": "GEM/2026/B/9292805",
     "bidder_id": "B002",
-    "name": "Beta Infra Works",
+    "name": "Beta Machined Works",
     "beneficial_owners": [
       {
         "name": "Jane Doe"
@@ -40,11 +42,12 @@
     ]
   },
   {
+    "tender_id": "GEM/2026/B/9292805",
     "bidder_id": "B003",
-    "name": "Gamma Civil Co",
+    "name": "Sahyadri Heavy Engineering",
     "beneficial_owners": [
       {
-        "name": "John Silva"
+        "name": "Vikramaditya Patil"
       }
     ],
     "submission_metadata": {
@@ -57,8 +60,9 @@
     ]
   },
   {
+    "tender_id": "GEM/2026/B/9292805",
     "bidder_id": "B004",
-    "name": "Delta Roadbuilders",
+    "name": "Delta Aerospace Components",
     "beneficial_owners": [
       {
         "name": "Raj Kapoor"
@@ -73,56 +77,9 @@
     ]
   },
   {
-    "bidder_id": "B005",
-    "name": "Epsilon Paving Co",
-    "beneficial_owners": [
-      {
-        "name": "Maria Lopez"
-      }
-    ],
-    "submission_metadata": {
-      "ip_address": "192.0.2.91",
-      "bank_routing_code": "021000021"
-    },
-    "declared_assets": [
-      "ASSET-6001"
-    ]
-  },
-  {
-    "bidder_id": "B006",
-    "name": "Zenith Infrastructure",
-    "beneficial_owners": [
-      {
-        "name": "Tom Wu"
-      }
-    ],
-    "submission_metadata": {
-      "ip_address": "192.0.2.14",
-      "bank_routing_code": "091000019"
-    },
-    "declared_assets": [
-      "ASSET-7001"
-    ]
-  },
-  {
-    "bidder_id": "B007",
-    "name": "Meridian Group",
-    "beneficial_owners": [
-      {
-        "name": "Sara Ahn"
-      }
-    ],
-    "submission_metadata": {
-      "ip_address": "192.0.2.91",
-      "bank_routing_code": "121000358"
-    },
-    "declared_assets": [
-      "ASSET-8001"
-    ]
-  },
-  {
+    "tender_id": "GEM/2026/B/9292805",
     "bidder_id": "B008",
-    "name": "Dynamic Works Updated Ltd",
+    "name": "Dynamic Syndicate Works",
     "beneficial_owners": [
       {
         "name": "Jane Doe"
@@ -138,19 +95,55 @@
     ]
   },
   {
-    "bidder_id": "B0011",
-    "name": "darani co",
+    "tender_id": "T2001",
+    "bidder_id": "B005",
+    "name": "Kavach Cloud Systems",
     "beneficial_owners": [
       {
-        "name": "karthi"
+        "name": "Amitabh Verma"
       }
     ],
     "submission_metadata": {
-      "ip_address": "203.0.113.50",
-      "bank_routing_code": "0101010101"
+      "ip_address": "192.0.2.91",
+      "bank_routing_code": "021000021"
     },
     "declared_assets": [
-      "ASSET-9001"
+      "ASSET-SERVER-RACK-01"
+    ]
+  },
+  {
+    "tender_id": "T2001",
+    "bidder_id": "B006",
+    "name": "Zenith Cloud Infrastructure",
+    "beneficial_owners": [
+      {
+        "name": "Tom Wu"
+      }
+    ],
+    "submission_metadata": {
+      "ip_address": "192.0.2.14",
+      "bank_routing_code": "091000019"
+    },
+    "declared_assets": [
+      "ASSET-7001"
+    ]
+  },
+  {
+    "tender_id": "T2001",
+    "bidder_id": "B007",
+    "name": "Meridian Data Networks",
+    "beneficial_owners": [
+      {
+        "name": "Amitabh Verma"
+      }
+    ],
+    "submission_metadata": {
+      "ip_address": "192.0.2.91",
+      "bank_routing_code": "121000358"
+    },
+    "declared_assets": [
+      "ASSET-SERVER-RACK-01",
+      "ASSET-8001"
     ]
   }
 ]

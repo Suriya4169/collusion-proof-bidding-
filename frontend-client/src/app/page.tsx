@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Activity, Building2, FileSearch, FolderCheck, GitCompare, Handshake, Scale, ExternalLink } from "lucide-react";
+import { Activity, Building2, Cpu, FileSearch, FolderCheck, GitCompare, Handshake, Scale, ExternalLink } from "lucide-react";
 import type { ComponentType } from "react";
 import { PageShell } from "@/components/ui";
 
@@ -12,9 +12,9 @@ interface Entry {
 }
 
 const VENDOR_MODULES: Entry[] = [
+  { href: "/profile", title: "Enterprise Profile & Statutory Asset Vault", desc: "Udyam auto-extraction, heavy machinery serial declaration, and live cryptographic network IP telemetry.", ref: "GET /api/udyam/verify/{id}", Icon: Cpu },
   { href: "/dashboard", title: "Tender Compliance Auditor", desc: "Upload GeM tender PDFs to extract EMD waivers, turnover criteria, and get Hindi translations.", ref: "POST /api/tender/analyze", Icon: FileSearch },
   { href: "/marketplace", title: "GeM Tender Marketplace", desc: "Discover active government opportunities with instant qualification matching and budget alerts.", ref: "GET /api/tenders", Icon: Activity },
-  { href: "/payment-tracker", title: "Delayed Payment Recovery", desc: "Samadhaan interest calculator enforcing 45-day default rules and 3× RBI compounding interest.", ref: "POST /api/payments/track", Icon: Scale },
   { href: "/legal-diff", title: "Corrigendum Diff & Amendment Guard", desc: "Semantic NLP redline of modified tender clauses with sudden qualification tampering alerts.", ref: "POST /api/diff", Icon: GitCompare },
   { href: "/matchmaker", title: "Consortium Partner Matchmaker", desc: "Find qualified joint-venture partners to bridge technical or financial tender gaps.", ref: "GET /api/matchmaker/{id}", Icon: Handshake },
   { href: "/documents", title: "Readiness Document Vault", desc: "Store and track Udyam, GSTIN, PAN, ISO certificates, and financial solvency proofs.", ref: "GET /api/documents/{id}", Icon: FolderCheck },

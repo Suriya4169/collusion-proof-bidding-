@@ -27,6 +27,7 @@ class SubmissionMetadata(BaseModel):
 class BidderProfile(BaseModel):
     bidder_id: str = Field(..., min_length=1)
     name: str = Field(..., min_length=1)
+    tender_id: Optional[str] = Field(default=None)
     beneficial_owners: List[BeneficialOwner] = Field(default_factory=list)
     submission_metadata: SubmissionMetadata = Field(default_factory=SubmissionMetadata)
     declared_assets: List[str] = Field(default_factory=list)

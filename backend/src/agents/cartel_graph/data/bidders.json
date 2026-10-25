@@ -122,7 +122,7 @@
   },
   {
     "bidder_id": "B008",
-    "name": "Dynamic Works Updated Ltd",
+    "name": "Dynamic Works Ltd",
     "beneficial_owners": [
       {
         "name": "Jane Doe"
@@ -134,22 +134,6 @@
     },
     "declared_assets": [
       "ASSET-1001",
-      "ASSET-9001"
-    ]
-  },
-  {
-    "bidder_id": "B0011",
-    "name": "darani co",
-    "beneficial_owners": [
-      {
-        "name": "karthi"
-      }
-    ],
-    "submission_metadata": {
-      "ip_address": "203.0.113.50",
-      "bank_routing_code": "0101010101"
-    },
-    "declared_assets": [
       "ASSET-9001"
     ]
   }

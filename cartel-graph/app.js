@@ -67,10 +67,10 @@
       const res = await fetch("http://localhost:8000/graph-render");
       if (!res.ok) throw new Error("Graph API request failed");
       const data = await res.json();
-      renderGraph(data.bidders || [], data.metadata || staticMetadataCatalog, data.bipartite || [], data.anomalyScores || {});
+      renderGraph(data.bidders || [], data.metadata || [], data.bipartite || [], data.anomalyScores || {});
     } catch (error) {
-      console.warn("Graph API unavailable; using metadata-only fallback.", error);
-      renderGraph([], staticMetadataCatalog, [], {});
+      console.warn("Graph API unavailable; no graph data loaded.", error);
+      renderGraph([], [], [], {});
     }
   }
 
@@ -217,8 +217,30 @@
 
     const zoomBehavior = d3.zoom()
       .scaleExtent([0.4, 2.5])
-      .on("zoom", (event) => zoomLayer.attr("transform", event.transform));
     svg.call(zoomBehavior);
+
+    if (nodes.length === 0) {
+      zoomLayer.append("text")
+        .attr("x", 0)
+        .attr("y", -10)
+        .attr("text-anchor", "middle")
+        .attr("fill", "rgba(255,255,255,0.7)")
+        .attr("font-size", "15px")
+        .attr("font-family", "Inter, sans-serif")
+        .text("No active bidding entities registered in pool");
+
+      zoomLayer.append("text")
+        .attr("x", 0)
+        .attr("y", 18)
+        .attr("text-anchor", "middle")
+        .attr("fill", "rgba(255,255,255,0.4)")
+        .attr("font-size", "12px")
+        .attr("font-family", "Inter, sans-serif")
+        .text("Standing by for online GeM / vendor registrations · True IP telemetry active");
+
+      document.getElementById("graphHint").textContent = "Live Cartel Monitor — Ready for incoming tender submissions.";
+      return;
+    }
 
     const linkSel = linkLayer.selectAll("line")
       .data(structuralLinks)

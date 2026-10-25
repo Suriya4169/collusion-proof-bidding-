@@ -558,3 +558,79 @@ export interface SolvencyAnalysis {
   bank_name?: string | null;
   statement_period?: string | null;
 }
+
+/** Udyam Verification & Asset Registry (/api/udyam/*) */
+export interface UdyamVerificationResponse {
+  udyam_number: string;
+  company_name: string;
+  enterprise_type: string;
+  major_activity: string;
+  sector: string;
+  state: string;
+  district: string;
+  beneficial_owners: string[];
+  bank_routing_code?: string;
+  bank_name?: string;
+  gstin?: string;
+  pan?: string;
+  nic_code?: string;
+  date_of_incorporation?: string;
+  suggested_assets?: string[];
+  verification_status: string;
+  statute_ref?: string;
+  verified_at: string;
+  digital_seal: string;
+}
+
+export interface NetworkTelemetryResponse {
+  ip: string;
+  is_loopback: boolean;
+  origin: string;
+  timestamp: string;
+}
+
+export interface BidderEntity {
+  bidder_id: string;
+  name: string;
+  tender_id?: string;
+  beneficial_owners?: { name: string }[];
+  submission_metadata?: {
+    ip_address?: string;
+    bank_routing_code?: string;
+  };
+  declared_assets?: string[];
+}
+
+export interface VendorProfileSavePayload {
+  udyam_number: string;
+  bidder_id?: string;
+  tender_id?: string;
+  company_name: string;
+  beneficial_owners: string[];
+  declared_assets: string[];
+  bank_routing_code?: string;
+  ip_address?: string;
+  sector?: string;
+  enterprise_type?: string;
+}
+
+export interface VendorProfileSaveResponse {
+  status: string;
+  message: string;
+  bidder_id: string;
+  udyam_number: string;
+  detected_ip: string;
+  declared_assets_count: number;
+  cartel_pool_total: number;
+  profile: BidderEntity;
+}
+
+export interface VendorProfileGetResponse {
+  detected_ip: string;
+  is_loopback: boolean;
+  active_bidder: BidderEntity | null;
+  bidders: BidderEntity[];
+  total_active_entities: number;
+  count: number;
+}
+

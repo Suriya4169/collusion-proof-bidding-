@@ -12,7 +12,6 @@ import { apiRequest, PERSONA_STORAGE_KEY, type HealthResponse, type Persona } fr
 const VENDOR_LINKS = [
   { href: "/marketplace", label: "Tenders" },
   { href: "/dashboard", label: "Compliance Auditor" },
-  { href: "/payment-tracker", label: "Payment Recovery" },
   { href: "/legal-diff", label: "Corrigendum Diff" },
   { href: "/matchmaker", label: "Matchmaker" },
   { href: "/documents", label: "Readiness Vault" },
