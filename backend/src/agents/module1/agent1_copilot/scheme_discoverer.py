@@ -58,8 +58,14 @@ def discover_schemes(report: VerificationReport) -> List[str]:
     for s in MSME_SCHEMES:
         schemes_text += f"- {s['name']}: {s['description']} (Link: {s['link']})\n"
 
-    # 3. Use LLM to match failures to schemes
-    llm = ChatGoogleGenerativeAI(model="gemini-3.6-flash")
+    # 3. Use LLM to match failures to schemes if API key is present
+    if not (os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")):
+        return [f"{s['name']}: {s['description']} (Link: {s['link']})" for s in MSME_SCHEMES[:2]]
+
+    try:
+        llm = ChatGoogleGenerativeAI(model="gemini-3.6-flash")
+    except Exception:
+        return [f"{s['name']}: {s['description']} (Link: {s['link']})" for s in MSME_SCHEMES[:2]]
 
     prompt_template = """
     You are an expert MSME Government Advisor.
