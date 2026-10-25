@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Network, RefreshCw, ShieldAlert } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Network, RefreshCw, ShieldAlert, Upload, Download, Plus, Trash2, X, CheckCircle, RotateCcw } from "lucide-react";
 import { Btn, EmptyState, ErrorNotice, ExportJsonButton, JsonDrawer, PageHeader, PageShell, Panel, Pill, Spinner, Stat, riskTone } from "@/components/ui";
-import { apiRequest, errorMessage, type BiddersResponse, type CartelSummary, type GraphRenderPayload } from "@/lib/api";
+import { apiRequest, apiUpload, errorMessage, type BiddersResponse, type CartelSummary, type GraphRenderPayload } from "@/lib/api";
 
 const KIND_STYLE: Record<string, { label: string; color: string }> = {
   director: { label: "Beneficial owner", color: "#38bdf8" },
@@ -112,7 +112,21 @@ export default function CartelGraphPage() {
   const [data, setData] = useState<AllData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [sharedOnly, setSharedOnly] = useState(true);
+
+  // New Bidder Modal Form
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newId, setNewId] = useState("");
+  const [newName, setNewName] = useState("");
+  const [newOwners, setNewOwners] = useState("");
+  const [newIp, setNewIp] = useState("");
+  const [newBank, setNewBank] = useState("");
+  const [newAssets, setNewAssets] = useState("");
+  const [formBusy, setFormBusy] = useState(false);
+
+  // CSV File input ref
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -136,27 +150,264 @@ export default function CartelGraphPage() {
     load();
   }, [load]);
 
+  const handleUploadCsv = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLoading(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await apiUpload<any>("/api/cartel/upload-csv", formData);
+      setNotice(res.data.message || `Uploaded ${file.name} successfully.`);
+      await load();
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setLoading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleDownloadSample = async () => {
+    try {
+      const res = await fetch("http://localhost:8000/api/cartel/sample-csv");
+      const text = await res.text();
+      const blob = new Blob([text], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "bidders_cartel_sample.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError("Failed to download sample CSV template.");
+    }
+  };
+
+  const handleReset = async (mode: "benchmark" | "clear") => {
+    setLoading(true);
+    setError(null);
+    setNotice(null);
+    try {
+      await apiRequest(`/api/cartel/reset?mode=${mode}`, { method: "POST" });
+      setNotice(mode === "benchmark" ? "Reset to canonical benchmark dataset (9 bidders)." : "Active pool cleared.");
+      await load();
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteBidder = async (bidderId: string) => {
+    if (!confirm(`Remove bidder '${bidderId}' from active analysis pool?`)) return;
+    try {
+      await apiRequest(`/api/cartel/bidders/${bidderId}`, { method: "DELETE" });
+      setNotice(`Removed bidder ${bidderId}. Anomaly graph recomputed.`);
+      await load();
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  };
+
+  const handleAddBidderSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newId.trim() || !newName.trim()) return;
+    setFormBusy(true);
+    try {
+      const payload = {
+        bidder_id: newId.trim(),
+        name: newName.trim(),
+        beneficial_owners: newOwners
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .map((n) => ({ name: n })),
+        submission_metadata: {
+          ip_address: newIp.trim() || null,
+          bank_routing_code: newBank.trim() || null,
+        },
+        declared_assets: newAssets
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean),
+      };
+
+      await apiRequest("/api/cartel/bidders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      setShowAddModal(false);
+      setNewId("");
+      setNewName("");
+      setNewOwners("");
+      setNewIp("");
+      setNewBank("");
+      setNewAssets("");
+      setNotice(`Added bidder '${payload.name}'. Graph re-analyzed.`);
+      await load();
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setFormBusy(false);
+    }
+  };
+
   const maxScore = data ? Math.max(0, ...Object.values(data.summary.anomaly_scores)) : 0;
 
   return (
     <PageShell>
       <PageHeader
-        eyebrow="Agent 2C · Collusion analytics"
+        eyebrow="Agent 2C · Dynamic Collusion Analytics"
         title="Cartel & Collusion Graph Intelligence"
-        subtitle="Bipartite network of bidders against shared beneficial owners, submission IPs, bank routing codes and declared assets. Overlap across supposedly independent bidders indicates bid-rigging risk."
+        subtitle="Dynamic bipartite network of bidders against shared beneficial owners, submission IPs, bank routing codes, and declared assets. Upload custom tender CSVs or add entities dynamically to test collusion resilience in real-time."
         statutes={["Competition Act 2002 §3(3)(d) — bid rigging", "GFR 2017 Rule 173(xvi)", "NetworkX bipartite projection"]}
         actions={
-          <>
+          <div className="flex flex-wrap items-center gap-2">
+            <input type="file" ref={fileInputRef} onChange={handleUploadCsv} accept=".csv" className="hidden" />
+            <Btn
+              onClick={() => fileInputRef.current?.click()}
+              disabled={loading}
+              icon={<Upload className="h-3 w-3" />}
+              className="border-sky-500/40 text-sky-300 hover:bg-sky-950/40"
+            >
+              Upload Bidders CSV
+            </Btn>
+            <Btn onClick={handleDownloadSample} icon={<Download className="h-3 w-3" />}>
+              Sample CSV
+            </Btn>
+            <Btn
+              onClick={() => setShowAddModal(true)}
+              icon={<Plus className="h-3 w-3" />}
+              className="bg-emerald-600/80 text-white hover:bg-emerald-500"
+            >
+              Add Bidder
+            </Btn>
+            <Btn onClick={() => handleReset("benchmark")} disabled={loading} icon={<RotateCcw className="h-3 w-3" />}>
+              Reset Benchmark
+            </Btn>
             {data && <ExportJsonButton data={data.graph} filename="cartel-graph-render.json" />}
             <Btn onClick={load} disabled={loading} icon={<RefreshCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />}>
               Re-evaluate
             </Btn>
-          </>
+          </div>
         }
       />
 
+      {notice && (
+        <div className="flex items-center justify-between rounded border border-emerald-800/60 bg-emerald-950/30 px-3.5 py-2 text-xs text-emerald-300">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="h-4 w-4 text-emerald-400" />
+            <span>{notice}</span>
+          </div>
+          <button onClick={() => setNotice(null)} className="text-emerald-400 hover:text-white">
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      )}
+
       {error && <ErrorNotice message={error} onRetry={load} />}
       {loading && !data && <Spinner label="Building bidder graph…" />}
+
+      {/* Dynamic Add Bidder Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-xl border border-slate-800 bg-slate-900 p-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="text-base font-semibold text-white">Add Entity to Bidding Pool</h3>
+              <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-white">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <form onSubmit={handleAddBidderSubmit} className="mt-4 space-y-3 text-xs">
+              <div>
+                <label className="block font-medium text-slate-300">Bidder ID *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. B010"
+                  value={newId}
+                  onChange={(e) => setNewId(e.target.value)}
+                  className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-3 py-1.5 text-slate-100 placeholder-slate-600 focus:border-sky-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block font-medium text-slate-300">Company / Enterprise Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Apex Precision Works Ltd"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-3 py-1.5 text-slate-100 placeholder-slate-600 focus:border-sky-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block font-medium text-slate-300">Beneficial Owners / Directors (comma-separated)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Jane Doe, Rajesh Sharma"
+                  value={newOwners}
+                  onChange={(e) => setNewOwners(e.target.value)}
+                  className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-3 py-1.5 text-slate-100 placeholder-slate-600 focus:border-sky-500 focus:outline-none"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-medium text-slate-300">Submission IP Address</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 203.0.113.5"
+                    value={newIp}
+                    onChange={(e) => setNewIp(e.target.value)}
+                    className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-3 py-1.5 font-mono text-slate-100 placeholder-slate-600 focus:border-sky-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block font-medium text-slate-300">Bank IFSC / Routing Code</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 021000021"
+                    value={newBank}
+                    onChange={(e) => setNewBank(e.target.value)}
+                    className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-3 py-1.5 font-mono text-slate-100 placeholder-slate-600 focus:border-sky-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block font-medium text-slate-300">Declared Assets / Equipment IDs (comma-separated)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. ASSET-1001, ASSET-9999"
+                  value={newAssets}
+                  onChange={(e) => setNewAssets(e.target.value)}
+                  className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-3 py-1.5 font-mono text-slate-100 placeholder-slate-600 focus:border-sky-500 focus:outline-none"
+                />
+              </div>
+              <div className="mt-5 flex justify-end gap-2 border-t border-slate-800 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="rounded border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={formBusy}
+                  className="rounded bg-sky-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-sky-500 disabled:opacity-50"
+                >
+                  {formBusy ? "Saving…" : "Add & Analyze"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {data && (
         <>
@@ -220,6 +471,7 @@ export default function CartelGraphPage() {
                     <th className="px-4 py-2 font-medium">Submission IP</th>
                     <th className="px-4 py-2 font-medium">Bank routing</th>
                     <th className="px-4 py-2 text-right font-medium">Anomaly</th>
+                    <th className="px-4 py-2 text-center font-medium">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/70">
@@ -239,6 +491,15 @@ export default function CartelGraphPage() {
                               {s.toFixed(2)}
                             </Pill>
                           </td>
+                          <td className="px-4 py-2 text-center">
+                            <button
+                              onClick={() => handleDeleteBidder(b.bidder_id)}
+                              title="Delete bidder from pool"
+                              className="rounded p-1 text-slate-500 hover:bg-rose-950/40 hover:text-rose-400"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </td>
                         </tr>
                       );
                     })}
@@ -251,7 +512,13 @@ export default function CartelGraphPage() {
         </>
       )}
 
-      {!data && !loading && !error && <EmptyState icon={<Network className="h-8 w-8" />} title="No bidder data" body="Register bidders through POST /api/cartel/bidders to build the graph." />}
+      {!data && !loading && !error && (
+        <EmptyState
+          icon={<Network className="h-8 w-8" />}
+          title="No bidder data"
+          body="Register bidders through the 'Add Bidder' button, upload a custom CSV, or click 'Reset Benchmark'."
+        />
+      )}
     </PageShell>
   );
 }

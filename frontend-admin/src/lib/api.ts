@@ -93,6 +93,34 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<A
   return { data: body as T, status: res.status, latencyMs };
 }
 
+export async function apiUpload<T>(path: string, formData: FormData): Promise<ApiResult<T>> {
+  const started = performance.now();
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, withAuth({ method: "POST", body: formData }));
+  } catch {
+    throw new ApiError(
+      `Cannot reach the ProcureGuard API at ${API_BASE}. Start the backend and retry.`,
+    );
+  }
+  const latencyMs = Math.round(performance.now() - started);
+
+  let body: unknown = null;
+  try {
+    body = await res.json();
+  } catch {
+    body = null;
+  }
+
+  if (!res.ok) {
+    throw new ApiError(
+      describeBody(body as FastApiErrorBody | null, `Server returned HTTP ${res.status}`),
+      res.status,
+    );
+  }
+  return { data: body as T, status: res.status, latencyMs };
+}
+
 export function errorMessage(err: unknown, fallback = "Unexpected error."): string {
   return err instanceof Error ? err.message : fallback;
 }

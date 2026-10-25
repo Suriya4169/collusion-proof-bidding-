@@ -1,18 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Trophy, ShieldCheck, AlertTriangle, CheckCircle, RefreshCw, Cpu, Award } from "lucide-react";
+import { Trophy, ShieldCheck, AlertTriangle, CheckCircle, RefreshCw, Cpu, Award, Sliders, Zap } from "lucide-react";
 
 interface LeaderboardEntry {
   rank: number;
   bidder_id: string;
   price_score: number;
+  performance_score?: number;
   legal_score: number;
   financial_score: number;
   technical_score: number;
-  fused_bayesian_trust_score: float;
-  collusion_anomaly_score: float;
-  composite_score: float | null;
+  fused_bayesian_trust_score: number;
+  collusion_anomaly_score: number;
+  composite_score: number | null;
   is_financially_eligible: boolean;
   status: string;
 }
@@ -33,11 +34,20 @@ export default function TrustOptimizerPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Dynamic Parameter State
+  const [tenderId, setTenderId] = useState("TENDER-2026-001");
+  const [bRef, setBRef] = useState(400000);
+  const [numBidders, setNumBidders] = useState(20);
+  const [seed, setSeed] = useState(42);
+
   const fetchOptimization = async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("http://localhost:8000/api/trust-optimizer/leaderboard/TENDER-2026-001");
+      const url = `http://localhost:8000/api/trust-optimizer/leaderboard/${encodeURIComponent(
+        tenderId.trim() || "TENDER-2026-001"
+      )}?b_ref=${bRef}&num_bidders=${numBidders}&seed=${seed}`;
+      const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
       const json = await res.json();
       setData(json);
@@ -52,6 +62,13 @@ export default function TrustOptimizerPage() {
     fetchOptimization();
   }, []);
 
+  const applyPreset = (presetName: string, id: string, budget: number, count: number, s: number) => {
+    setTenderId(id);
+    setBRef(budget);
+    setNumBidders(count);
+    setSeed(s);
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 lg:p-10">
       <div className="max-w-[1440px] mx-auto space-y-8">
@@ -62,22 +79,102 @@ export default function TrustOptimizerPage() {
               <span className="rounded bg-violet-500/20 px-2 py-0.5 text-xs font-semibold text-violet-300 border border-violet-500/30">
                 SOVEREIGN BAYESIAN TRUST ENGINE
               </span>
-              <span className="text-xs text-slate-500">Tender: TENDER-2026-001</span>
+              <span className="text-xs text-slate-500 font-mono">Agent 6 · Best Bidder Multi-Agent Selection</span>
             </div>
             <h1 className="text-2xl font-bold text-white mt-1">Hardened Multi-Criteria Trust Optimizer</h1>
             <p className="text-sm text-slate-400 mt-1">
-              Fuses Bayesian performance beta priors, financial solvency proofs, collusion anomaly penalties, and pricing curves.
+              Dynamically computes Bayesian beta priors, financial gatekeeping, price non-linearity, and collusion anomaly penalties across any tender.
             </p>
           </div>
 
           <button
             onClick={fetchOptimization}
             disabled={loading}
-            className="flex items-center gap-2 rounded bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 rounded bg-violet-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-violet-500 transition-colors shadow-lg shadow-violet-900/30 disabled:opacity-50"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            Re-run Optimization
+            Run Bayesian Optimization
           </button>
+        </div>
+
+        {/* Dynamic Parameter Tuning Console */}
+        <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-5 shadow-xl">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-3 mb-4">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-300">
+              <Sliders className="h-4 w-4 text-violet-400" />
+              Dynamic Procurement Parameters & Seed Tuning
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-slate-400">
+              <span className="text-slate-500">Presets:</span>
+              <button
+                type="button"
+                onClick={() => applyPreset("Standard", "TENDER-2026-001", 400000, 20, 42)}
+                className="rounded bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300 hover:bg-slate-700"
+              >
+                Standard (₹4L, 20)
+              </button>
+              <button
+                type="button"
+                onClick={() => applyPreset("Mega Infra", "TENDER-INFRA-900", 15000000, 35, 108)}
+                className="rounded bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300 hover:bg-slate-700"
+              >
+                Mega Infra (₹1.5Cr, 35)
+              </button>
+              <button
+                type="button"
+                onClick={() => applyPreset("High Collusion", "TENDER-CARTEL-RISK", 850000, 15, 7)}
+                className="rounded bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300 hover:bg-slate-700"
+              >
+                Cartel Stress (15 bids)
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+            <div>
+              <label className="block font-medium text-slate-400 mb-1">Tender Reference ID</label>
+              <input
+                type="text"
+                value={tenderId}
+                onChange={(e) => setTenderId(e.target.value)}
+                placeholder="e.g. TENDER-2026-X12"
+                className="w-full rounded border border-slate-700 bg-slate-950 px-3 py-1.5 font-mono text-slate-200 focus:border-violet-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block font-medium text-slate-400 mb-1">Independent Budget Ref (B_ref in ₹)</label>
+              <input
+                type="number"
+                min={10000}
+                step={50000}
+                value={bRef}
+                onChange={(e) => setBRef(Number(e.target.value))}
+                className="w-full rounded border border-slate-700 bg-slate-950 px-3 py-1.5 font-mono text-slate-200 focus:border-violet-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block font-medium text-slate-400 mb-1">
+                Candidate Pool Size: <span className="font-mono text-violet-400 font-bold">{numBidders}</span>
+              </label>
+              <input
+                type="range"
+                min={2}
+                max={50}
+                value={numBidders}
+                onChange={(e) => setNumBidders(Number(e.target.value))}
+                className="w-full accent-violet-500 mt-1 cursor-pointer"
+              />
+            </div>
+            <div>
+              <label className="block font-medium text-slate-400 mb-1">Simulation Seed (Random Multiplier)</label>
+              <input
+                type="number"
+                value={seed}
+                onChange={(e) => setSeed(Number(e.target.value))}
+                className="w-full rounded border border-slate-700 bg-slate-950 px-3 py-1.5 font-mono text-slate-200 focus:border-violet-500 focus:outline-none"
+              />
+            </div>
+          </div>
         </div>
 
         {error && (
@@ -108,9 +205,9 @@ export default function TrustOptimizerPage() {
               <span className="text-xs font-medium text-slate-400">Total Bidders Evaluated</span>
               <div className="flex items-baseline gap-2 mt-2">
                 <span className="text-3xl font-bold text-white">{data.total_evaluated}</span>
-                <span className="text-xs text-emerald-400">({data.total_eligible} eligible)</span>
+                <span className="text-xs text-emerald-400 font-medium">({data.total_eligible} eligible)</span>
               </div>
-              <span className="text-[11px] text-slate-500 mt-2">Strict gatekeeping applied</span>
+              <span className="text-[11px] text-slate-500 mt-2 font-mono">Tender: {data.tender_id}</span>
             </div>
 
             <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 flex flex-col justify-between">
@@ -119,7 +216,7 @@ export default function TrustOptimizerPage() {
                 <span className="text-3xl font-bold text-rose-400">{data.total_excluded}</span>
                 <span className="text-xs text-slate-400">entities</span>
               </div>
-              <span className="text-[11px] text-slate-500 mt-2">Insolvency or Anomaly flags</span>
+              <span className="text-[11px] text-slate-500 mt-2 font-mono">Hold review: {data.hold_for_manual_review ? "YES" : "NO"}</span>
             </div>
           </div>
         )}
@@ -132,7 +229,7 @@ export default function TrustOptimizerPage() {
                 <Award className="h-5 w-5 text-violet-400" />
                 Ranked Multi-Criteria Evaluation Matrix
               </h3>
-              <span className="text-xs font-mono text-slate-500">Bayesian Posterior Fusion Mode</span>
+              <span className="text-xs font-mono text-slate-500">Posterior Optimization · Sorted by Composite Score</span>
             </div>
 
             <div className="overflow-x-auto">
@@ -204,9 +301,9 @@ export default function TrustOptimizerPage() {
                           </span>
                         </td>
                         <td className="py-3 px-4">
-                          {entry.status === "eligible" ? (
+                          {entry.status === "Winner" || entry.status === "Passed" || entry.status === "eligible" ? (
                             <span className="inline-flex items-center gap-1 rounded bg-emerald-500/10 px-2 py-0.5 text-[11px] text-emerald-400 border border-emerald-500/20 font-sans">
-                              <CheckCircle className="h-3 w-3" /> Eligible
+                              <CheckCircle className="h-3 w-3" /> {entry.status}
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 rounded bg-rose-500/10 px-2 py-0.5 text-[11px] text-rose-400 border border-rose-500/20 font-sans">
