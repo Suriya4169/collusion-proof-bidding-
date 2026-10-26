@@ -1,5 +1,0 @@
-# Demo website and automated bot tests (not needed to serve the model).
--r requirements-dev.txt
-
-# Drives the Microsoft Edge (or Google Chrome) that is already installed: no browser download needed.
-playwright==1.64.0

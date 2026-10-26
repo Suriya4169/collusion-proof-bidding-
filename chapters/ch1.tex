@@ -1,0 +1,72 @@
+\chapter{Introduction}
+\label{ch:introduction}
+
+\section{Background}
+Governments are among the largest buyers in any economy. The OECD estimates that public procurement accounts for roughly 12\% of GDP across its member countries \cite{oecd2015recommendation}, and in India central and state bodies buy through the Government e-Marketplace (GeM), the Central Public Procurement Portal and a number of state e-procurement systems. Because the volumes are so large, procurement is also an instrument of policy. Three provisions matter most here. The Public Procurement Policy for Micro and Small Enterprises Order 2012 sets an annual purchasing target from small firms for central bodies \cite{mseorder2012}. The bid-security provisions of the General Financial Rules (GFR) 2017 allow registered micro and small enterprises to bid without paying the earnest money deposit (EMD) \cite{gfr2017}. And Chapter V of the MSMED Act 2006 obliges a buyer to pay a micro or small supplier within 45 days of acceptance, failing which the buyer owes compound interest at three times the bank rate notified by the Reserve Bank of India \cite{msmedact2006}.
+
+On paper, then, a small supplier is well protected. In practice many of these protections go unused, because a small firm rarely has a lawyer or compliance officer, and the system also leaks integrity in ways that one clerk reading one tender cannot see.
+
+\section{Why Small Suppliers and Auditors Struggle}
+The project started from six recurring problems, listed below. Each engine described later was built to answer one of them.
+
+\begin{enumerate}
+    \item \textbf{Document burden.} A tender document commonly runs to 100--150 pages, with the eligibility conditions spread over the notice, the general conditions and several annexures. A supplier can miss a mandatory certificate, or fail to notice that an exemption they are entitled to is mentioned only in an annexure.
+    \item \textbf{Late payment.} Working out what is owed under the MSMED Act means calculating compound interest with monthly rests and then writing a demand in the right form. Many suppliers simply write off the delay.
+    \item \textbf{Late amendments.} A corrigendum published a day or two before the closing date can raise a financial threshold just enough to exclude a competitor, and nobody compares the amended text line by line with the original.
+    \item \textbf{Cartels.} Bidders who look independent may share directors, network addresses, bank branches or machinery, and a tender-by-tender audit does not reveal that overlap.
+    \item \textbf{Doctored statements.} A bank statement submitted as proof of solvency can be edited, spliced from several documents, or padded with a deposit that is withdrawn again after submission.
+    \item \textbf{Scripted bidding.} Software can submit or refresh bids faster and more regularly than any person can.
+\end{enumerate}
+
+The first three problems fall mainly on suppliers and the last three on the people who oversee the process, which is why the platform has two portals (Chapter~\ref{ch:design}).
+
+\section{Problem Statement}
+Suppliers need help reading documents and enforcing their statutory rights. Auditors need relational and forensic tools, because looking at one tender at a time cannot expose patterns that appear only across bidders and across time.
+
+The tempting response is to hand the whole task to a large language model (LLM): read the tender, judge the bidder, name the winner. We consider this unsafe for decisions that carry legal weight, for three reasons. First, generative models can state figures that do not appear in the source text \cite{ji2023survey}, so a hallucinated threshold turns into a wrongful disqualification. Second, they are stochastic, so the same input does not always give the same output, and a decision that changes between runs is hard to defend in front of an administrative tribunal. Third, they do not guarantee arithmetic or accounting invariants, such as the rule that each balance in a bank statement equals the previous balance plus credits minus debits, or that compound interest is computed with the right number of rests.
+
+The problem is therefore: \emph{how can language models make tender documents readable without taking any decision that has to be correct, repeatable and traceable?}
+
+\section{Aim and Objectives}
+The aim is to design, build and evaluate ProcureGuard-AI, a platform that helps small vendors check tender eligibility and claim late-payment interest, and that gives auditors forensic tools for cartels, ledgers and bot bidding. Each objective below corresponds to a module in the project repository:
+
+\begin{enumerate}
+    \item build an in-memory retrieval and extraction pipeline that turns a tender PDF into typed rules with source-page citations and confidence scores;
+    \item compute eligibility deterministically as a Compliance Distance Score and apply the GFR 2017 exemption;
+    \item implement the interest calculation of MSMED Act Sections 15--17 and draft the demand notice;
+    \item flag corrigendum clauses that changed meaning, and weight the risk by how close the change is to the deadline;
+    \item build a bipartite cartel graph that caps public-infrastructure attributes, discounts common attributes in its anomaly score and respects declared joint ventures;
+    \item verify bank statements as ledgers, separating scanning errors from tampering;
+    \item score keystroke timing for scripted behaviour without recording what was typed;
+    \item rank bidders with a Bayesian trust optimizer hardened against collusion, all behind one role-controlled API.
+\end{enumerate}
+
+\section{Research Questions}
+Three research questions guide the evaluation.
+\begin{itemize}
+    \item \textbf{RQ1.} Does keeping the language model on the reading side, and all decisions in deterministic code, give results that are correct, repeatable and traceable?
+    \item \textbf{RQ2.} Do the safeguards in the cartel and ledger engines (the public-infrastructure cap and character-confusion repair) reduce false alarms without hiding real manipulation?
+    \item \textbf{RQ3.} Can a model trained only on genuine human typists separate scripted submissions from human ones using timing alone?
+\end{itemize}
+
+\section{Scope, Authorship and Limitations}
+\label{sec:scope}
+ProcureGuard-AI is a team project and this thesis describes the whole platform so that the pieces can be understood together. The repository records four contributors: Jeevakamal K R (compliance and legal-diff modules, API gateway, persistence, M2M gateway and integration), Darani Karthik R (access control, database hosting, the MCP server and the behavioural-biometrics engine), Aakash Raj V (solvency extraction and ledger verification) and Suriya Dharsaun K G (the cartel graph and the Bayesian trust optimizer). Each engine is described from its code and tests, and the experiments reported in Chapter~\ref{ch:results} were written by the team for this thesis.
+
+The main limitations are stated here so that the reader can keep them in mind through the later chapters.
+\begin{itemize}
+    \item No real procurement, typing or bank-statement data was available to us. Every experiment uses synthetic data generated with fixed random seeds.
+    \item The payment clock in the interest calculator starts at the invoice date, whereas Section 15 of the Act starts it from acceptance or deemed acceptance.
+\end{itemize}
+
+\section{Contributions}
+The thesis makes the following contributions.
+\begin{itemize}
+    \item A pipeline in which model output is parsed into typed schemas and every later decision is computed by ordinary code, with a page citation attached to each extracted rule.
+    \item A ledger verifier that tries character-confusion repairs before raising a tampering flag, together with an experiment showing that it does not excuse randomly inflated balances; the harder case of a forger using confusable digits is left untested.
+    \item A cartel scorer that caps public-infrastructure attributes, discounts common attributes in its anomaly score, merges flagged pairs into rings and exempts declared joint ventures, together with a sweep that shows how sensitive it is to the public-infrastructure cap.
+    \item A keystroke detector trained only on human sessions, with a reliability label on each score, and controlled experiments for RQ2 and RQ3 whose scripts regenerate the numbers in the tables (the RQ3 numbers come from the biometrics evaluation scripts).
+\end{itemize}
+
+\section{Organisation of the Thesis}
+Chapter~\ref{ch:literature} reviews the research on which the platform rests and states the gap it addresses. Chapter~\ref{ch:design} sets out the requirements, architecture, access model and data model. Chapter~\ref{ch:engines1} describes the engines that read and compare documents (compliance, payment recovery, corrigendum differ) and Chapter~\ref{ch:engines2} those used by auditors (cartel graph, ledger verifier, keystroke detector, trust optimizer). Chapter~\ref{ch:results} reports the test results and experiments and discusses their validity. Chapter~\ref{ch:conclusion} answers the research questions and lists future work. The appendices list the engine constants, the API surface and the commands to reproduce the experiments.

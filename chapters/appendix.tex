@@ -1,0 +1,91 @@
+\chapter{Engine Constants}
+\label{app:constants}
+
+Table~\ref{tab:constants} collects the constants quoted in Chapters~\ref{ch:engines1} and~\ref{ch:engines2}, so that a reader can find them in one place. They are the values in the final repository, not recommendations.
+
+\begin{table}[htbp]
+\centering
+\caption{Constants used by the engines}
+\label{tab:constants}
+\small
+\renewcommand{\arraystretch}{1.1}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{2.8cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{3.0cm}@{}}
+\toprule
+\textbf{Engine} & \textbf{Constant} & \textbf{Value} \\
+\midrule
+Retrieval & Chunk size / overlap & 1500 / 200 characters \\
+Retrieval & Embedding dimension (MiniLM) & 384 \\
+Retrieval & Chunks per question & 4 \\
+Extraction & Model temperature & 0.1 \\
+Compliance & Rule weights (EMD, turnover, experience, certificates) & 3, 2, 2, 1 \\
+Payment & Bank rate / interest rate & 6.5\% / 19.5\% \\
+Payment & Statutory payment period & 45 days \\
+Differ & Similarity threshold for flagging & 0.75 \\
+Differ & Base scores (restrictive / neutral) & 0.3 / 0.1 \\
+Differ & Time multiplier $\tau$ & 3.0 / 1.5 / 1.0 \\
+Differ & Verdict thresholds & 0.75 / 0.40 \\
+Cartel & Public-infrastructure cap & 5 bidders \\
+Cartel & Anomaly weights ($S_a$, $S_o$, $S_c$, $\rho$) & 0.45, 0.35, 0.20, $-0.30$ \\
+Ledger & Recurrence tolerance & 0.05 rupees \\
+Ledger & Window-dressing $Z$ threshold & 3 \\
+Ledger & Round-trip window / amount tolerance & 7 days / 2\% \\
+Ledger & Benford flag threshold & 0.25 \\
+Keystroke & Clipping of flights / holds & 2000 / 1000 ms \\
+Keystroke & Mixture components (full / flight-only) & 2 / 4 \\
+Keystroke & Risk bands (moderate / high) & 50 / 75 \\
+Keystroke & Reliability bands (low / medium / high) & $<30$ / 30--99 / $\ge100$ keystrokes \\
+Trust & Price blend $\delta$ & 0.5 \\
+Trust & Outlier exclusion for $B_{\min}$ & 40\% from $B_{\mathrm{ref}}$ \\
+Trust & Collusion penalty $\mu$ & 0.3 \\
+Trust & Manual-review margin & 0.02 \\
+Trust & Trust update weights (old / outcome) & 0.8 / 0.2 \\
+Trust & Beta prior $\alpha$, $\beta$; legal penalty $\gamma$ & 1, 1; 2 \\
+Trust & Agent multiplier range $\eta_j$ & 0.85--1.15 \\
+Trust & Threshold jitter per tender & $\pm0.02$ \\
+Trust & Review trigger (anomaly $A$) & $\ge 0.10$ \\
+Trust & Score-clustering distance & 0.05 \\
+Notifier & Scan interval & 300 s \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\chapter{API Surface}
+\label{app:api}
+
+The gateway registers 14 routers (Section~\ref{sec:arch}). Table~\ref{tab:api} groups the gateway areas by the roles that may reach them and is not a one-to-one list of those routers. The exact path prefixes are defined in \texttt{backend/src/main.py}, and the access policy is in \texttt{backend/src/core/access.py}.
+
+\begin{table}[htbp]
+\centering
+\caption{Gateway areas and access}
+\label{tab:api}
+\small
+\renewcommand{\arraystretch}{1.1}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.8cm}>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Area} & \textbf{Who may use it} \\
+\midrule
+Authentication & Anyone (login and registration) \\
+MSME profiles & Read: owning enterprise and reviewers; change: owning enterprise and admin \\
+Tenders, legal diff, orchestrator & Any signed-in user \\
+Matchmaker, notifications, documents & The owning enterprise and reviewers \\
+Vendor bidding & Vendors, scoped to their own enterprise \\
+Cartel graph, solvency & Reviewers only \\
+Behaviour signals and review queue & Set per route; the review queue is for reviewers \\
+Trust optimizer, MCP server (read-only bot-detection tools) & Reviewers only \\
+M2M gateway & Holders of an API key \\
+Background jobs & Any signed-in user \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\chapter{Reproducing the Experiments}
+\label{app:repro}
+
+The experiment scripts are run from the \texttt{ProcureGuard-AI} directory, because they import the engines as packages.
+
+\begin{enumerate}
+    \item \textbf{Ledger and cartel experiments.} Run \texttt{python} {\small\path{../thesis/experiments/rq2_experiments.py}}. The script uses fixed seeds (11 for the ledger, 5 for the cartel pools) and writes \texttt{rq2\_results.json}.
+    \item \textbf{Cap sweep.} Run \texttt{python ../thesis\_amrita/experiments/cap\_sweep.py}. It sets \texttt{AEGIS\_PUBLIC\_DEGREE\_CAP} to each value in turn, re-imports the engine, repeats the cartel experiment on the same pools and writes \texttt{cap\_sweep.json}. The row for a cap of 5 reproduces Table~\ref{tab:cartel}.
+    \item \textbf{Figures.} Run \texttt{python experiments/make\_figs.py} from the \texttt{thesis\_amrita} directory. Figure~\ref{fig:cap} is drawn from \texttt{cap\_sweep.json}. Figure~\ref{fig:biolen} uses the four length-band values from the biometrics evaluation report.
+    \item \textbf{Keystroke evaluation.} The protocol, seeds and scripts for Section~\ref{sec:bio} are in the biometrics engine under \texttt{reports/} and \texttt{scripts/}.
+\end{enumerate}

@@ -1,0 +1,126 @@
+\chapter{Auditor Engines: Collusion, Ledger, Behaviour and Trust}
+\label{ch:engines2}
+
+The four engines in this chapter serve auditors. They work on relations between bidders, on the internal consistency of financial documents, on timing signals from the bid form, and on the ranking of bidders. Each of them produces a lead for a human reviewer, not a verdict.
+
+\section{Cartel Graph}
+\label{sec:cartel}
+\paragraph{Structure.} The graph (\texttt{engines/cartel\_graph/graph.py}) is bipartite: one side holds bidders, the other holds shared attributes of four kinds (directors, IP addresses, bank routing codes, and declared assets or certificates). Blank or missing values never become nodes, so two bidders with nothing recorded cannot match each other. This is a small rule but it matters, because missing data is common and treating "empty" as a shared value would link unrelated firms.
+
+\paragraph{Evidence weight.} An attribute node with degree $d\ge 2$ becomes a piece of evidence with weight
+\begin{equation}
+w(d)=\min\!\left(1,\ \frac{1}{\ln(1+d)}\right).
+\end{equation}
+This is the inverse-logarithm weight used by Adamic and Adar for shared neighbours in social networks \cite{adamic2003friends}: the more bidders share an attribute, the less it says about any two of them. Table~\ref{tab:weights} gives some values.
+
+\begin{table}[htbp]
+\centering
+\caption{Evidence weight $w(d)$ of a shared attribute held by $d$ bidders}
+\label{tab:weights}
+\small
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+$d$ & 2 & 3 & 4 & 5 & 6 & 10 \\
+\midrule
+$w(d)$ & 0.910 & 0.721 & 0.621 & 0.558 & 0.514 & 0.417 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The decay is slow, so the discount is mild and not strong. For stronger protection, an IP or bank code shared by more than five bidders (the default cap, \texttt{AEGIS\_PUBLIC\_DEGREE\_CAP}) is treated as public infrastructure and can never flag anyone on its own. A shared director is not subject to the cap, since a real person sitting on many boards is exactly what an auditor wants to see. Bidders that appear together in a declared joint-venture group are exempt from each other.
+
+\paragraph{Pair flags.} A pair of bidders is flagged when they share at least one attribute that is not public infrastructure and is not covered by a declared joint venture; there is no separate score threshold. The weight $w(d)$ does not decide the flag. It scales how much each shared attribute adds to a bidder's anomaly score below.
+
+\paragraph{Rings.} Flagged pairs are merged into rings by taking connected components of a bidder--evidence graph, so five colluding firms appear as one ring and not as ten pairs. For an auditor this changes the question from "which pairs look related?" to "which groups look coordinated?", which is closer to how a cartel is actually described in an enquiry. Because rings are connected components, a chain of weak links (A and B share an IP, B and C share a bank code) can merge unrelated bidders into one ring, and the auditor should read a ring as a lead and not as a finding.
+
+\paragraph{Anomaly score.} Each bidder also receives an anomaly score (\texttt{scoring.py}). Let $\bar a$, $\bar o$ and $\bar n$ be the weighted counts of shared assets, shared owners and shared network attributes, divided by the bidder's declared assets, owners and two respectively. With clamping to $[0,1]$,
+\begin{equation}
+A_i=\mathrm{clamp}\bigl(0.45\,S_a+0.35\,S_o+0.20\,S_c-0.30\,\rho_i\bigr),
+\end{equation}
+where $S_a=\mathrm{clamp}(1.6\bar a)$, $S_o=\mathrm{clamp}(1.8\bar o)$, $S_c=\mathrm{clamp}(0.75\bar n+0.75\bar a)$ and $\rho_i=\min(1,0.8\cdot\text{partners sharing assets}/\text{declared assets})$.
+
+The sign of the $\rho_i$ term is worth noting: the code subtracts it, although its comment says it should raise suspicion. Because shared assets already enter $S_a$ and $S_c$, the subtraction acts as a calibration term. We report the behaviour as implemented and list the question under future work. Read literally, it means that a bidder whose partners share its assets receives a lower score than it otherwise would, which is the opposite of what a collusion detector should do, so the term needs either a code fix or a stronger justification.
+
+\paragraph{Cost.} Building the graph is linear in the number of bidder--attribute edges. The pair search compares every pair of bidders, so it is quadratic in the number of bidders in a pool. For the pools of a dozen or a few dozen bidders that a single tender attracts this is negligible, but it would need an index over attribute nodes before it could be run across a whole portal.
+
+\section{Ledger-Constrained Bank-Statement Verification}
+\label{sec:ledger}
+The verifier (\texttt{engines/solvency/ledger\_verifier.py}) treats a statement as a ledger and applies five constraints, with a tolerance $\epsilon=0.05$ rupees. The first is the strongest, because it is an identity and not a statistical test.
+
+\paragraph{1. Row recurrence and OCR repair.} For each row, $|B_t-(B_{t-1}+C_t-D_t)|\le\epsilon$. If a row fails, the verifier generates candidates by replacing one digit of the integer part of the balance, the credit or the debit with a visually confusable digit (1/7, 3/8, 8/0, 5/6, and the corresponding letter confusions), and searches the combinations. If some combination satisfies the recurrence the row is marked \texttt{CORRECTED\_OCR\_ERROR} and the repaired balance is carried forward; otherwise it is an \texttt{UNEXPLAINABLE\_RESIDUAL} and raises a critical flag.
+
+\emph{Illustration.} Suppose a row opens at Rs~95{,}000 with a credit of Rs~23{,}000, so the balance should be Rs~1{,}18{,}000. If the scan reads 7{,}18{,}000, the recurrence fails; changing the 7 to a 1 restores it, so the row is repaired and the correct balance is carried forward. If the document instead shows Rs~1{,}68{,}000, as it would after a Rs~50{,}000 insertion, no single confusable swap in the balance, credit or debit satisfies the recurrence, and the row is flagged as unexplained.
+
+A forgery could in principle coincide with a confusion swap and be mistaken for scanning noise. The experiment in Section~\ref{sec:res_ledger} measures how often that happens.
+
+\paragraph{2. Page continuity.} The opening balance of page $p+1$ must equal the closing balance of page $p$, which exposes deleted or spliced pages.
+
+\paragraph{3. Window dressing.} A robust $Z$-score compares the mean balance of the last 30 days with the earlier history:
+\begin{equation}
+Z=\frac{\overline{B}_{30}-\mathrm{median}(B_{\text{prior}})}{1.4826\cdot\mathrm{MAD}(B_{\text{prior}})},
+\end{equation}
+flagged when $Z\ge 3$. The constant 1.4826 makes the MAD comparable to a standard deviation for normally distributed data, and the median and MAD resist single outliers \cite{rousseeuw1993alternatives}.
+
+\paragraph{4. Round trips.} A credit of at least twice the median credit is matched to a debit within the next 7 days whose amount differs by at most 2\% and whose narration shares more than one token with the credit. This catches the pattern in which money enters shortly before submission and leaves again shortly after.
+
+\paragraph{5. Benford check.} With at least 30 amounts, the largest gap between the observed first-digit proportions and $\log_{10}(1+1/d)$ \cite{benford1938law,nigrini2012benford} is computed, and a low-severity flag is raised if it exceeds 0.25. This is a maximum-deviation statistic, not a full Kolmogorov--Smirnov test, and it only signals suspicion. The value 0.25 is a default that was not tuned or validated here; it is lax, so only strongly non-Benford amounts would be flagged.
+
+The solvency figure reported to auditors is a time-weighted average balance, so a one-day spike has little effect on it.
+
+\section{Keystroke Bot Detection}
+\label{sec:bio}
+\paragraph{Capture and features.} The browser SDK records only key-down and key-up times. Hold time is $H_k=t^{\text{up}}_k-t^{\text{down}}_k$ and flight time is $F_k=t^{\text{down}}_k-t^{\text{up}}_{k-1}$. Flights are clipped at 2000 ms and holds at 1000 ms so that a pause to read the form cannot dominate, and the first flight (the delay before typing starts) is discarded.
+
+The features (the feature module of the biometrics engine) fall into four groups, shown in Table~\ref{tab:feat}. All are defined so that they do not grow with the number of keystrokes, but their estimates are noisier for short sessions, which is why every score carries a reliability label.
+
+\begin{table}[htbp]
+\centering
+\caption{Feature groups used by the keystroke detector}
+\label{tab:feat}
+\small
+\renewcommand{\arraystretch}{1.1}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.6cm}>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Group} & \textbf{Content} \\
+\midrule
+Location and spread & Means, spreads and percentiles of log hold and log flight times \\
+Shape & Skewness and kurtosis of the log timings \\
+Rhythm & Lag-1 autocorrelation of the flight series \\
+Interval mix & Share of short, long and pause intervals \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{Model.} The log features are modelled by a Gaussian mixture \cite{bishop2006prml}
+\begin{equation}
+p(\mathbf{x})=\sum_{j=1}^{J}\pi_j\,\mathcal{N}(\mathbf{x}\mid\mathbf{m}_j,\boldsymbol\Sigma_j),
+\end{equation}
+fitted by expectation--maximisation \cite{dempster1977maximum} on genuine human sessions only, with $J=2$ components for the full mode (hold and flight) and $J=4$ for the flight-only fallback; $\mathbf{m}_j$ and $\boldsymbol\Sigma_j$ are the mean and covariance of component $j$. A mixture is used because human typists are not one population: a fast typist and a slow one form two clusters, and a single Gaussian would call the space between them normal. These sizes were selected on a separate development dataset (seed 7) as the simplest candidate within 1\% of the best macro detection rate at a human false-alarm rate near 5\%.
+
+The negative log-likelihood is mapped to a 0--100 risk score using a threshold calibrated per session-length band on a held-out human split, so that 50 is meant to be the 95th percentile of humans of similar length and 75 the 99th (Section~\ref{sec:res_bio_len} shows that the realised false-alarm rate still varies with length). A session is moderate risk from 50 and high risk from 75. A reliability label accompanies every score: low below 30 keystrokes, medium from 30 to 99, high from 100. Models are exported as JSON and scored with NumPy alone \cite{harris2020array}, so no training library is needed at the point of use.
+
+\paragraph{Use.} The score is advisory. Sessions that need review enter a pending queue, each reviewer decision is stored as its own event, and nothing ever blocks a bid automatically, because people who use assistive technology type differently from the training population.
+
+\section{Bayesian Trust Optimizer}
+\label{sec:trust}
+For a tender with reference price $B_{\text{ref}}$ (the independent estimate), five agents score each bidder (\texttt{engines/trust\_optimizer}).
+\begin{align}
+P_i&=\delta\frac{B_{\min}}{B_i}+(1-\delta)\frac{B_{\text{ref}}}{B_i},\quad \delta=0.5,\\
+\mathrm{Perf}_i&=\frac{\sum_k v_ks_{ik}+\alpha}{\sum_k v_k(s_{ik}+f_{ik})+\alpha+\beta},\quad \alpha=\beta=1,\\
+L_i&=\exp\!\Bigl(-\bigl[\textstyle\sum_c n^{\text{ver}}_{ic}w_c+\gamma D_i\bigr]\Bigr),\quad \gamma=2,
+\end{align}
+where $n^{\text{ver}}_{ic}$ is the number of verified cases of category $c$ for bidder $i$ and $w_c$ is the weight of that category.
+
+\paragraph{Price.} Bids more than 40\% from $B_{\text{ref}}$ are excluded when finding $B_{\min}$, so shell bids cannot move the price scale. Bids that far below $B_{\text{ref}}$ therefore cannot lower the scale, and the eligibility gate is intended to stop them from winning on price alone (the simulation of Chapter~\ref{ch:results} shows one such case, not a guarantee). The price score itself is a ratio, so a very low bid that passes the gate still scores higher; capping $P_i$ at 1 would remove this and is listed under future work.
+
+\paragraph{Performance.} The performance score is a Beta-style estimate in the manner of the beta reputation system \cite{josang2002beta}, in which $s_{ik}$ and $f_{ik}$ are the successful and failed projects of bidder $i$ with client $k$. Each is weighted by a verification weight $v_k$, so that mutual-reference rings count for less. The prior $\alpha=\beta=1$ pulls a bidder with no history towards 0.5 and not towards either extreme.
+
+\paragraph{Legal.} In the legal score, $D_i$ counts audited cases above self-declared cases in each category, so under-declaring litigation is penalised.
+
+\paragraph{Financial and technical.} The financial score scales the product of liquidity, credit rating and profitability between a floor and a ceiling, after an eligibility gate on registration age (two years) and turnover. The technical score is a Cobb--Douglas product \cite{cobb1928theory} of equipment, staff, technology and experience ratios, multiplied by a uniqueness factor $u_i=1-|\text{assets}_i\cap\text{assets}_{-i}|/|\text{assets}_i|$ that reduces the score when equipment is shared with other bidders. The price score is not bounded by 1; it reached 2.5 in the simulation.
+
+\paragraph{Fusion and selection.} A fused trust value $T_i=\sum_jC_{ij}\eta_jT_{ij}/\sum_jC_{ij}\eta_j$ combines the agent scores using confidences $C$ (project and case counts) and multipliers $\eta_j\in[0.85,1.15]$ drawn from a generator seeded by the tender identifier, so weights are reproducible for a given tender. Because the identifier is public, this is variation and not secrecy: it stops one fixed set of weights from being tuned against, but anyone with the code can recompute it. Selection removes bidders failing the gate or the minimum thresholds (each jittered by up to $\pm0.02$ per tender, which like the weights is recomputable from the public tender identifier and so adds variation, not security), then ranks the rest by
+\begin{equation}
+Z_i=\sum_k w_kS_{ik}-\mu A_i,\qquad \mu=0.3,
+\end{equation}
+where $S_{ik}$ is the score of bidder $i$ from agent $k$, $w_k$ is the weight of that agent, and $A_i=(S_a+O_i+S_c)/3$ averages shared-asset share, ownership overlap and score clustering (another bidder within Euclidean distance 0.05), or is replaced by the cartel engine's score for real bids. If the top two values differ by less than 0.02 and either bidder has $A\ge0.10$, the award is held for manual review. After the project, trust is updated as $T^{\text{new}}=0.8\,T^{\text{old}}+0.2\,o$ for outcome $o\in[0,1]$, so one project moves the value by at most 20\% of the gap.

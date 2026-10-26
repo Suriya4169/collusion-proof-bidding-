@@ -1,0 +1,117 @@
+\chapter{System Design}
+\label{ch:design}
+
+The descriptions in this chapter and the next two were checked against the final \texttt{ProcureGuard-AI} repository (backend, \texttt{engines/} packages and frontend), not against earlier prototypes.
+
+\section{Requirements}
+The requirements come from the six problems in Chapter~\ref{ch:introduction}. Table~\ref{tab:req} separates what the system must do from the qualities it must have. The non-functional requirements mattered more than the functional ones in practice, because they decided where the language model could and could not be used.
+
+\begin{table}[htbp]
+\centering
+\caption{Requirements derived from the problem statement}
+\label{tab:req}
+\small
+\renewcommand{\arraystretch}{1.15}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{1.1cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{3.2cm}@{}}
+\toprule
+\textbf{ID} & \textbf{Requirement} & \textbf{User} \\
+\midrule
+F1 & Extract eligibility rules from a tender PDF with page citations & Vendor \\
+F2 & Compare the vendor profile with the rules and report the gap per rule & Vendor \\
+F3 & Compute statutory interest on a late payment and draft a notice & Vendor \\
+F4 & Compare an amendment with the original and rate the risk & Vendor, auditor \\
+F5 & Show collusion rings among bidders & Auditor \\
+F6 & Verify a bank statement and report a solvency figure & Auditor \\
+F7 & Score a bid session for scripted behaviour & Auditor \\
+F8 & Rank bidders with an explainable trust value & Auditor \\
+\midrule
+N1 & Every decision is reproducible: same input, same output & All \\
+N2 & Every extracted figure is traceable to a page & Vendor \\
+N3 & Role-based access, with reviewers separated from vendors & All \\
+N4 & No key text is stored by the behaviour SDK & Auditor, bidder \\
+N5 & Each engine can be run and tested without the others & Developer \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Design Principle}
+The platform follows one rule: a language model may read and explain, but it never decides the outcome of an eligibility, interest, solvency, collusion or award computation. Two model outputs do feed a computation, and both are described where they occur: the invoice reader (Section~\ref{sec:payment}) and the label that sets the base score of a corrigendum clause (Section~\ref{sec:differ}). Gemini or Llama turns tender text into a typed record and later writes a plain-language summary. Eligibility, interest, solvency, collusion and award results come from ordinary Python that can be unit-tested and re-run. Requirement N1 (same input, same output) therefore holds from the typed record onwards; the extraction step itself depends on which provider answers (Section~\ref{sec:compliance}) and is made checkable through page citations and confidence scores, not made deterministic. Bank-statement figures are taken from the PDF text layer, not from a model, and when OCR is unavoidable the result is labelled \texttt{ocr\_used} so that it cannot be mistaken for a text-layer reading.
+
+\subsection{Alternatives Considered}
+Two simpler designs were considered and rejected.
+
+The first is an end-to-end LLM pipeline in which the model reads the tender and the vendor profile and returns a verdict. It is the fastest to build, but it breaks requirements N1 and N2: the verdict can differ between runs, and there is no step at which a wrong threshold can be caught. The second is a pure rule-based system with hand-written parsers for tender layouts. This satisfies N1 but copes badly with real documents, because tender layouts vary between portals and departments and every new layout needs a new parser. The adopted design splits the task at the point where each approach is strong. Reading unstructured text is left to the model, and everything after the typed record is plain code.
+
+\section{Architecture}
+\label{sec:arch}
+Figure~\ref{fig:arch} shows the four tiers. The engines for the cartel graph, solvency, biometrics and trust optimizer are independent Python packages under \texttt{engines/}. The gateway imports them, and each can also run alone as its own small FastAPI service and be tested on its own (requirement N5).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  node distance=4mm,
+  tier/.style={draw, rounded corners=2pt, text width=0.9\textwidth, align=center, inner sep=4pt, font=\footnotesize},
+  arrow/.style={-latex, thick}]
+\node[tier] (ui) {\textbf{Presentation:} Next.js 16 / React 19 --- vendor suite (compliance, legal diff, matchmaker, vault, payment tracker) and auditor suite (cartel graph, solvency, bot detection, trust optimizer, M2M console)};
+\node[tier, below=of ui] (gw) {\textbf{Gateway:} FastAPI --- JWT login and role checks, M2M key gateway, MCP server at \texttt{/mcp/}, LangGraph orchestrator, background jobs};
+\node[tier, below=of gw] (en) {\textbf{Engines:} compliance and legal diff $\cdot$ matchmaker and notifier $\cdot$ cartel graph $\cdot$ solvency and ledger verifier $\cdot$ biometrics $\cdot$ trust optimizer};
+\node[tier, below=of en] (db) {\textbf{Persistence and services:} SQLAlchemy on SQLite or PostgreSQL (Supabase) $\cdot$ Gemini / Hugging Face (reading only) $\cdot$ local MiniLM embeddings};
+\draw[arrow] (ui) -- (gw); \draw[arrow] (gw) -- (en); \draw[arrow] (en) -- (db);
+\end{tikzpicture}
+\caption{Tiers of ProcureGuard-AI.}
+\label{fig:arch}
+\end{figure}
+
+The stack is Python 3.12 or later (the tests in Chapter~\ref{ch:results} ran on 3.13) with FastAPI, SQLAlchemy 2.0, LangGraph and Pydantic; PyMuPDF, Chroma and MiniLM embeddings for retrieval; NetworkX, pandas, NumPy and scikit-learn in the engines \cite{hagberg2008networkx,harris2020array,pedregosa2011scikit}; and Next.js 16.3 with React 19.2, Tailwind CSS 4 and D3 in the interface. The gateway registers 14 routers in \texttt{backend/src/main.py} (authentication, MSME profiles, legal diff, cartel, behaviour, solvency, matchmaker, notifications, tenders, documents, M2M, jobs, trust optimizer and vendor bidding) and mounts the MCP server. The web interface is a Next.js application with 14 page routes plus a landing page.
+
+The repository also keeps the same code split into two applications, \texttt{frontend-client} (vendors, port 3000) and \texttt{frontend-admin} (auditors, port 3001). In the split vendor build the payment-tracker page is only a redirect, while the unified application has the full page; the thesis treats the unified application as the reference.
+
+\section{Roles and Access Control}
+Three roles exist: \texttt{msme} (a vendor), \texttt{government\_auditor} and \texttt{admin}. The policy sits in \texttt{backend/src/core/access.py} and is applied per router. Reviewers (auditor and admin) alone reach the cartel graph, solvency, trust optimizer, the bot-detection review queue and the MCP server. Any signed-in user can analyse tenders and run legal diff. The matchmaker, notifications and documents are limited to the owning enterprise plus reviewers, and the M2M gateway uses an API key. A test in \texttt{test\_access\_control.py} fails if any route is left unguarded, so a new endpoint cannot be added without a policy decision. The reason for such a test is that the easiest access-control mistake in a growing API is to forget a guard on a new route, and a test that enumerates the routes catches it automatically.
+
+\section{The Tender-Analysis Pipeline}
+Tender analysis is a LangGraph state graph of six nodes that share one typed state object. The graph runs in a fixed order and stops at the first failing node, returning that node's own error. Table~\ref{tab:nodes} lists the nodes; only nodes 3, 5 and 6 use a model.
+
+\begin{table}[htbp]
+\centering
+\caption{Nodes of the tender-analysis graph}
+\label{tab:nodes}
+\small
+\renewcommand{\arraystretch}{1.1}
+\begin{tabularx}{\textwidth}{@{}c>{\raggedright\arraybackslash}p{3.3cm}>{\raggedright\arraybackslash}X>{\centering\arraybackslash}p{1.3cm}@{}}
+\toprule
+\textbf{\#} & \textbf{Node} & \textbf{Job} & \textbf{Model?} \\
+\midrule
+1 & \texttt{pdf\_extractor} & Text from the PDF with PyMuPDF & No \\
+2 & \texttt{rag\_retriever} & Chunk, embed, keep the clauses that matter & No \\
+3 & \texttt{neural\_extractor} & Clauses to typed rules with confidence and page & Reads \\
+4 & \texttt{symbolic\_verifier} & Compare rules with vendor profile, compute CDS & No \\
+5 & \texttt{tender\_simplifier} & Plain and regional-language summary & Explains \\
+6 & \texttt{scheme\_discoverer} & Suggest support schemes for the gaps & Suggests \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The graph is reachable through \texttt{POST /api/orchestrator/analyze}, or as a background job through \texttt{POST /api/jobs/tender-analyze}, which returns a job identifier that the client polls until the job is done. Section~\ref{sec:compliance} gives the method of nodes 2--4.
+
+\subsection{Walk-through of one request}
+It helps to follow a single request through the tiers. A vendor signs in and the interface stores a JWT. The vendor uploads a tender PDF and presses analyse. The gateway checks the token and the role, creates an asynchronous job record and returns its identifier. A worker runs the six nodes in order. Node 1 reads the PDF text layer; node 2 builds an in-memory index and retrieves clauses; node 3 asks a model for typed rules; node 4 compares them with the vendor's stored MSME profile and computes the scores; nodes 5 and 6 add the summary and scheme suggestions. The job record is updated with the result, and the interface, which has been polling, renders the per-rule table with its traffic-light statuses and page citations. At no point after node 3 does a model change a figure or a decision. Nodes 5 and 6 produce free text only, and the platform does not yet check that text against the typed record, so a summary could still misquote a figure; the page-cited rule table is the authoritative output.
+
+\section{Data Model}
+SQLAlchemy 2.0 maps twelve tables: \texttt{users}, \texttt{msmes}, \texttt{user\_enterprises} (which enterprises a user may act for), \texttt{tenders}, \texttt{tender\_bids} (bids placed through the vendor portal, which are the live input to the cartel and trust engines), \texttt{documents}, \texttt{async\_jobs}, \texttt{m2m\_clients}, \texttt{match\_notifications}, \texttt{behavior\_signals}, \texttt{behavior\_review\_events} and \texttt{cartel\_incident\_reviews}.
+
+Two choices in this schema are worth explaining. Behaviour signals are stored as measurements, and each reviewer decision is a separate row in an append-only event table, so a review never changes the original score; an auditor can later see both what the detector said and what the human decided. And the user-to-enterprise link is its own table, which lets one login act for more than one enterprise. The database defaults to a local SQLite file and switches to PostgreSQL, including Supabase with row-level security, when \texttt{DATABASE\_URL} is set.
+
+\section{Security and Reliability}
+\begin{itemize}
+    \item Passwords are hashed with bcrypt (12 rounds). Login tokens are HS256 JWTs valid for 24 hours. In production mode the server refuses to start without a signing secret and creates no demo accounts.
+    \item The M2M gateway checks the \texttt{X-ProcureGuard-Key} header and is switched off if no key is configured. Signed requests (HMAC) are not yet verified on the server.
+    \item The MCP server exposes bot-detection tools (analyse timing, list and read signals, model status), all read-only, to signed-in auditors and admins, with DNS-rebinding protection. An assistant connected through MCP cannot record or change a review.
+    \item The keystroke SDK sends only timings, never characters (Section~\ref{sec:bio}). This is consistent with the data-minimisation expectations of the Digital Personal Data Protection Act 2023 \cite{dpdp2023}, but this thesis does not make a legal compliance claim.
+    \item Vector indexes are built in memory per request and discarded. A background notifier scans tenders every 300 seconds by default and writes at most one notification per vendor, tender and kind, enforced by a unique constraint.
+\end{itemize}
+
+\section{Ethical and Social Considerations}
+Three of the engines make statements about people or firms, and a false statement has a cost. A wrongly flagged bidder may lose business; a wrongly flagged typist may be treated as a bot. The design responds in four ways. First, nothing blocks anyone automatically: cartel, ledger and behaviour results go to a human reviewer as leads. Second, every result states its own reliability, as the keystroke score does through its low, medium and high labels. Third, the biometric input is limited to timings and no characters are recorded, which makes it much harder to recover what a person typed; timing is still treated as personal data. Fourth, because typing style differs for people who use assistive technology, the evaluation in Chapter~\ref{ch:results} reports the effect of withholding a typing style from training and does not hide it.
+
+There is also a question of who benefits. A tool that helps small suppliers read tenders could, in principle, also help a dishonest supplier find the weakest requirement to game. The platform does not guard against that, and we do not think it can; the countermeasure is the auditor-side tooling, which is why both portals exist.

@@ -1,4 +1,0 @@
-bidder_id,name,beneficial_owner,ip_address,bank_routing_code,declared_asset
-B001,Alpha Construction Ltd,Jane Doe,203.0.113.5,021000021,ASSET-1001
-B002,Beta Infra Works,Jane Doe,203.0.113.5,011401533,ASSET-1001
-B003,Gamma Civil Co,John Silva,203.0.113.5,071000013,ASSET-3001

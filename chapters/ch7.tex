@@ -1,0 +1,33 @@
+\chapter{Conclusion and Future Work}
+\label{ch:conclusion}
+
+\section{Summary}
+ProcureGuard-AI is a working platform in which language models read and explain while deterministic code decides. It offers vendors a tender eligibility check with page citations, a late-payment interest calculator, a corrigendum differ and a joint-venture matchmaker. It offers auditors a cartel graph, a bank-statement verifier, a keystroke bot detector and a collusion-resistant trust optimizer. All of these sit behind one role-controlled API, and each engine can be run and tested separately.
+
+The central design decision was where to draw the line between the model and the code. Drawing it at the typed record, so that the model's output is parsed into a schema and nothing after that point is generated, gave a system whose decisions can be replayed and whose figures can be checked against a page. It also meant that a large part of the work was ordinary engineering: statutory formulas, graph weights, accounting identities and calibrated thresholds.
+
+\section{Answers to the Research Questions}
+\begin{enumerate}
+    \item \textbf{RQ1.} The design makes each decision repeatable and traceable, and unit tests confirm the scoring and exemption logic. The thesis did not measure extractor error rates, so the benefit against hallucination is argued from the design and not shown by an experiment.
+    \item \textbf{RQ2.} In controlled synthetic tests, character-confusion repair cleared 96.6\% of noisy statements without hiding any of the 500 tampered ones, and the cartel engine recovered all planted rings. Its false-pair reduction depended heavily on the public-infrastructure cap: 29.9\% at the default of 5, 80.6\% at 3 and 1.3\% at 8. The benefit is therefore real but depends on the data and on a parameter that has to be calibrated. Ring recovery was perfect by construction, since the planted rings share a director and directors are never capped, and the ledger tampering used large inflations that no confusion swap can imitate. The claim that these safeguards do not hide real manipulation is thus only partly tested.
+    \item \textbf{RQ3.} On synthetic sessions the detector flagged 4.6\% of humans, caught all regular and burst scripts, but caught only 54.6\% of adaptive bots (ROC-AUC 0.958). Timing alone is therefore good against crude automation and weak against bots that imitate human timing. Detection also grows with session length, from 13\% at 10--19 keystrokes to 98\% at 200--300. The 4.6\% false-alarm rate holds only for typing styles seen in training: when one human style was withheld, 51--81\% of its sessions were flagged, so the detector must stay advisory.
+\end{enumerate}
+
+\section{Limitations}
+All evaluation is synthetic. Five backend tests currently fail. Scanned-PDF OCR and live model extraction were not tested here. The fallback parser can return default thresholds when it finds nothing. The payment clock starts at the invoice date. The M2M gateway checks a key but does not verify signed requests. The cartel anomaly score subtracts the partner-sharing term in a way that deserves review, and the trust optimizer's price score is not capped. The corrigendum differ, the compliance score and the payment calculator are checked only by worked examples and unit tests, not by an evaluation. In the differ, a quick check showed that numeric changes can stay above the similarity threshold. In the compliance engine, a medium enterprise would be wrongly exempted, because the exemption rests on a single MSME flag. Each experiment uses a single seed, so variation between generators is not measured.
+
+\section{Implications}
+For a public body, the pattern is to keep models on the reading side, make every consequential computation reproducible and cited to a source, and treat behavioural and graph signals as leads for a human reviewer and not as findings. The same pattern would apply outside procurement, in any setting such as benefit eligibility or regulatory filing, where a document has to be read by a model but the decision has legal force. These implications hold only after validation on real data.
+
+\section{Future Work}
+\begin{enumerate}
+    \item Repair or update the five failing tests and add a full-journey browser test (login, upload, analyse, display).
+    \item Measure extractor error rates against a labelled set of real tenders, with and without the symbolic layer, to give RQ1 an empirical answer.
+    \item Evaluate the cartel and ledger engines on real or realistically scanned data, and choose the public-infrastructure cap on real bidder pools, including rings that share only an IP address or a bank branch.
+    \item Retrain the keystroke model on consented real sessions, add sequence-level features against replayed human timing, and compare with published baselines.
+    \item Start the payment clock from the date of acceptance, keep the bank rate current, and verify signed M2M requests on the server.
+    \item Replace the fallback defaults with an explicit "not found" result.
+    \item Repeat the synthetic experiments over several seeds and report the spread.
+    \item Resolve the sign of the $\rho_i$ term in the cartel anomaly score, cap the trust optimizer's price score at 1, and drop exempted rules from the OCD average.
+    \item Add an adversarial ledger condition in which the forger edits with confusable digits, a planted ring that shares only an IP address or bank code, and a numeric and date comparison to the corrigendum differ, each with its own experiment.
+\end{enumerate}

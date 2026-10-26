@@ -1,28 +1,8 @@
-node_modules/
-build/
-dist/
-coverage/
-.DS_Store
+*.aux
 *.log
-.env*
-!.env.example
-
-# Python & Backend
-__pycache__/
-*.pyc
-venv/
-env/
-.venv/
-.pytest_cache/
-chroma_db/
-*.db
-*.sqlite3
-*.sqlite
-backend/test_data/uploads/
-backend/test_data/vault_storage/
-.next/
-frontend/.next/
-
-# Uploads created when the API is launched from the repo root
-test_data/uploads/
-test_data/vault_storage/
+*.bbl
+*.blg
+*.out
+*.toc
+*.lof
+*.lot

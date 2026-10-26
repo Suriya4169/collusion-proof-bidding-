@@ -1,0 +1,69 @@
+\chapter{Literature Review}
+\label{ch:literature}
+
+The platform draws on several research areas that rarely appear together: procurement studies, retrieval and language models, neurosymbolic design, network analysis, forensic accounting, keystroke biometrics and trust modelling. This chapter takes them in turn, says what each contributes to the design, and ends with the gap that the project tries to fill.
+
+\section{Procurement Integrity and Small-Firm Participation}
+Thai describes public procurement as a subject that was neglected for a long time and that sits between public administration, law and supply management \cite{thai2001public}. Flynn and Davis later reviewed the research literature and found that only a minority of published procurement studies rest on an explicit theory \cite{flynn2014theory}. For a practical project, that is a reminder that much of the useful knowledge sits in rules and procedures, which is why the platform encodes the Indian rules directly.
+
+There is an economic argument for helping small firms to bid. Preparing a bid has a fixed cost. If the cost of reading a tender and proving compliance is larger than the expected profit multiplied by the probability of winning, a rational small firm stays out, and the buyer faces less competition \cite{dimitri2006handbook}. Any tool that lowers the cost of reading a tender therefore does more than save time for the supplier; it widens the pool of bidders.
+
+On the integrity side, the OECD treats procurement as a high-risk area for corruption and recommends transparency and data-driven oversight \cite{oecd2015recommendation}. Fazekas and Kocsis build objective risk indicators from procurement records, such as contracts with a single bidder or the use of restricted procedures, and argue that corruption usually works through procedure rather than through open bribery \cite{fazekas2020uncovering}. An earlier index by Fazekas, T\'oth and King follows the same logic with a different set of indicators \cite{fazekas2016objective}. This thesis applies the idea at the level of the document: a tailored specification or a late amendment is a procedural red flag that can be read from the tender text itself, without waiting for award data.
+
+\section{Language Models, Retrieval and Hallucination}
+A tender is too long to place in front of a language model in one piece, and even when the context window is large enough, the relevant clause may be buried in pages of boilerplate. Retrieval-augmented generation (RAG) addresses this by fetching the relevant passages first and giving only those to the model \cite{lewis2020retrieval}.
+
+Retrieval can be lexical or dense. Lexical methods such as BM25 \cite{robertson2009probabilistic} match the words of the query and are precise for exact identifiers such as the abbreviation "EMD". Dense methods such as Sentence-BERT \cite{reimers2019sentence} embed passages as vectors and match meaning across different wording, so a query about "security deposit" can find a clause that says "earnest money". Each has a typical failure: lexical retrieval misses paraphrases, and dense retrieval can drift towards passages that are about the right topic but do not contain the number being sought. The platform uses dense retrieval with several narrow questions instead of one broad one (Section~\ref{sec:compliance}).
+
+Retrieval narrows what the model sees but does not make the model reliable. The survey by Ji et al.\ shows that generation systems can still produce unsupported content, including wrong figures and reversed conditions \cite{ji2023survey}. For a legal threshold, one wrong digit is enough to decide a case wrongly. This is the central risk that the project is designed around.
+
+\section{Neurosymbolic Design}
+Neurosymbolic AI combines learned perception with explicit rules. Garcez and Lamb describe it as a way to obtain the flexibility of neural models together with the traceability of symbolic reasoning \cite{garcez2023neurosymbolic}, and Marcus argues that robust systems need explicit structured knowledge and operations on variables alongside learning \cite{marcus2020next}. The design used in this thesis is the narrowest form of the idea. The neural component produces a typed record, the record is validated against a schema, and from that point only ordinary code touches it. There is no learned reasoning between the extraction and the decision, which means the decision can be unit-tested and replayed.
+
+\section{Collusion Detection on Networks}
+Bid rigging takes several forms, among them cover bidding, bid rotation and market allocation \cite{dimitri2006handbook}. Wachs and Kert\'esz model auction markets as networks of buyers and firms and show that the structure of co-bidding reveals cartel-like behaviour \cite{wachs2019network}. A naive version of this idea flags any two bidders that share an attribute. Independent firms do share things, though: a regional internet provider, a bank branch, a business park address. A practical engine therefore has to weaken the evidence that comes from common attributes, report rings and not isolated pairs, and respect legal joint ventures.
+
+The weakening can be borrowed from link analysis. Adamic and Adar, working on social networks, weight a shared neighbour by the inverse logarithm of its degree, so that a feature held by everyone counts for little \cite{adamic2003friends}. Work on bipartite projection in recommender systems reaches a similar conclusion, that a popular node should contribute less to the similarity of the items it connects \cite{zhou2007bipartite}. The cartel engine uses the same inverse-logarithm weight (Section~\ref{sec:cartel}). The graph itself is built with NetworkX \cite{hagberg2008networkx}.
+
+\section{Forensic Accounting}
+Benford's law, which Benford documented across many datasets in 1938, says that in many collections of naturally occurring amounts the leading digit $d$ appears with probability $\log_{10}(1+1/d)$ \cite{benford1938law}; Nigrini's book is the standard guide to using the law in audits \cite{nigrini2012benford}. The test is weak on small samples and can only support suspicion, never prove manipulation.
+
+A bank statement also obeys an exact rule: each balance equals the previous balance plus credits minus debits. That rule is stronger than any statistical test. The difficulty is that scanned statements read through optical character recognition (OCR) break it by accident, for example when a digit 1 is read as 7. A verifier therefore has to tell a scanning slip from a real edit, and the literature on Benford-style tests does not address that distinction because it assumes clean digital data.
+
+Window dressing is the practice of parking money in an account shortly before it is examined. Detecting it means comparing recent balances with history, and robust scale estimators help here. The median absolute deviation \cite{rousseeuw1993alternatives} is not distorted by a few extreme values in the way a standard deviation is, so a single large deposit in the past does not hide a new one.
+
+\section{Keystroke Dynamics}
+Keystroke dynamics identifies a person or a behaviour from the timing of key presses. Monrose and Rubin showed early on that typing rhythm carries enough information to support authentication \cite{monrose2000keystroke}. The two basic features are hold time (key down to key up) and flight time (key up to the next key down). Killourhy and Maxion compared anomaly detectors on a single benchmark and found that detector quality varies widely between algorithms \cite{killourhy2009comparing}.
+
+For bot detection the setting differs from authentication in an important way: the attacks of tomorrow are not known today, so the detector should be one-class, trained on human behaviour only, in the sense surveyed by Chandola et al.\ \cite{chandola2009anomaly}. Isolation Forest \cite{liu2008isolation} and Gaussian mixture models \cite{bishop2006prml}, fitted by expectation--maximisation \cite{dempster1977maximum}, both fit this pattern. Two design limits matter. Capturing which key was pressed would be a privacy hazard, so only timing should be stored. And short sessions carry little evidence, so a score must come with a reliability level and must never block anybody automatically.
+
+\section{Multi-Criteria Bidder Selection}
+Lowest-price award invites adverse selection, which is why many systems score price together with experience, finances and technical ability. J{\o}sang et al.\ survey trust and reputation models that combine several pieces of evidence into one score \cite{josang2007survey}, and the beta reputation system gives a compact way to turn counts of successes and failures into an expected reliability \cite{josang2002beta}. Technical capacity can be modelled as a product of inputs in the manner of a production function \cite{cobb1928theory}.
+
+Weighted scores are easy to game. A cartel can submit decoy prices to move the scale, inflate each other's track records, or hide lawsuits. A hardened selector must therefore anchor price to an independent estimate, weight evidence by how well it was verified, and penalise suspected collusion. Section~\ref{sec:trust} shows how the optimizer does each of these.
+
+\section{Comparison and Research Gap}
+Table~\ref{tab:related} summarises the strands above and what each leaves open for this problem.
+
+\begin{table}[htbp]
+\centering
+\caption{Related work and what it leaves open}
+\label{tab:related}
+\small
+\renewcommand{\arraystretch}{1.15}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.0cm}>{\raggedright\arraybackslash}p{3.7cm}>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Area} & \textbf{Representative work} & \textbf{What remains open here} \\
+\midrule
+Retrieval-augmented generation & Lewis et al.\ \cite{lewis2020retrieval} & No guarantee on numbers; no decision layer. \\
+Neurosymbolic AI & Garcez and Lamb \cite{garcez2023neurosymbolic} & General position; few concrete procurement systems. \\
+Corruption risk indicators & Fazekas and Kocsis \cite{fazekas2020uncovering} & Built on award data, not on tender documents. \\
+Co-bidding networks & Wachs and Kert\'esz \cite{wachs2019network} & Needs award history; no treatment of shared public infrastructure. \\
+Benford and forensic tests & Nigrini \cite{nigrini2012benford} & Statistical only; ignores OCR noise. \\
+Keystroke anomaly detection & Killourhy and Maxion \cite{killourhy2009comparing} & Benchmarked for authentication, not bid submission. \\
+Trust and reputation & J{\o}sang et al.\ \cite{josang2007survey} & Not hardened against collusive inputs. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Each area has good individual work. What we did not find in the literature we reviewed is a single working system that serves both sides of the market and holds one rule throughout: the language model reads, and code decides. We could not find a published system for Indian tenders that combines these pieces, but we cannot claim that none exists. ProcureGuard-AI is an attempt at that combination, evaluated honestly on the data that was available.

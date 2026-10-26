@@ -1,0 +1,76 @@
+\chapter{Document Engines: Compliance, Payment and Amendments}
+\label{ch:engines1}
+
+This chapter and the next give the method of each engine, together with the constants that the code uses. File names are relative to the repository root. The three engines here work on documents, mainly for vendors: they read a tender, compute what a late payment is worth, and compare an amendment with its original.
+
+\section{Tender Compliance}
+\label{sec:compliance}
+
+\paragraph{Retrieval.} The tender text (\texttt{agents/compliance/rag\_retriever.py}) is cut into chunks of at most 1500 characters with 200 characters of overlap, using a recursive splitter that prefers paragraph breaks. The overlap is there so that a sentence cut at a chunk boundary still appears whole in one of the two neighbours. Every chunk is embedded with the local \texttt{all-MiniLM-L6-v2} model into a 384-dimensional vector and stored in an in-memory Chroma index.
+
+A single broad question tends to return clauses that are generally about tenders and miss the eligibility table, so five separate questions are asked (EMD, turnover, experience, MSE/startup relaxation, mandatory certificates). Each returns its four nearest chunks by cosine similarity, and the results are merged without duplicates. Retrieval is dense only; no lexical (BM25) component is used.
+
+\paragraph{Extraction.} The merged text goes to \texttt{neural\_extractor.py}. If a Hugging Face token is set, Llama-3.1-8B-Instruct is tried first; if that fails, Gemini is tried; if that also fails, a regular-expression parser runs so that the pipeline still returns something. The model output is parsed into a Pydantic \texttt{TenderRequirements} object holding the EMD amount, required turnover, required experience, certificates, an MSME-exemption flag, and for each rule a confidence in $[0,1]$ and a source page. The temperature is 0.1, which keeps the output close to deterministic without relying on it being so.
+
+One weakness deserves mention. When the regular-expression fallback finds nothing, it fills in default values (EMD 50{,}000, turnover 25 lakh, three years), so a fallback result must be read with care. Silently supplying thresholds also runs against the principle of Chapter~\ref{ch:design} that every figure should be traceable to a page. A cleaner design would return an explicit "not found", and this is listed under future work.
+
+\paragraph{Verification.} From here no model is involved (\texttt{symbolic\_verifier.py}). For a numeric rule with required value $R$ and vendor value $A$, the Compliance Distance Score is
+\begin{equation}
+\mathrm{CDS}=\frac{A-R}{R}\times 100,
+\end{equation}
+which is positive when the vendor exceeds the requirement and negative when it falls short; it is 100 when there is no requirement. The score is a percentage gap, so the same number means the same thing for a rule in rupees and a rule in years.
+
+If the tender grants an MSME relaxation and the vendor is a registered MSME, the EMD and turnover rules receive the status \texttt{EXEMPTED}. The EMD exemption follows GFR 2017 \cite{gfr2017}; the code applies the same flag to turnover, a relaxation that comes from the MSE procurement policy and that should be checked against each tender's own wording. An overall score combines the rules with fixed weights $w$ (EMD 3, turnover 2, experience 2, certificates 1):
+\begin{equation}
+\mathrm{OCD}=\frac{\sum_i w_i\,n_i}{\sum_i w_i},\qquad
+n_i=\begin{cases}100 & \text{pass or exempted}\\ \max(0,\,100+\mathrm{CDS}_i) & \text{fail.}\end{cases}
+\end{equation}
+Each rule also carries a traffic-light status and a human-readable reason, so the result can be traced from the report back to the clause and page.
+
+\paragraph{Worked example.} Take a tender that requires a turnover of Rs~25 lakh and three years of experience, grants the MSE relaxation (which the code applies to EMD and turnover together), and asks for one certificate. A registered micro enterprise has a turnover of Rs~40 lakh, two years of experience and the certificate. The turnover rule gives $\mathrm{CDS}=(40-25)/25\times100=+60$, which is still reported, but its status is exempted. The experience rule gives $\mathrm{CDS}=(2-3)/3\times100\approx-33.3$ and fails, so its contribution is $n=100-33.3=66.7$. The EMD rule is also exempted and the certificate passes, so all three contribute 100. Then
+\begin{equation}
+\mathrm{OCD}=\frac{3(100)+2(100)+2(66.7)+1(100)}{3+2+2+1}=\frac{733.3}{8}\approx 91.7.
+\end{equation}
+The report would show one amber row (experience, 33\% short) and three green rows, and the vendor sees exactly which clause to address. The failure does not disappear into an average, because each rule keeps its own status next to the overall score. Two caveats apply. An exempted rule counts as 100, so an exempt vendor receives the full weight of those rules for free; dropping exempted rules from both sums would be a fairer score. And OCD is a gap measure, not a verdict: a failed mandatory rule is usually a disqualification in practice, so the per-rule status, and not the average, is what the vendor should act on. The exemption is also decided by a single registered-MSME flag, whereas the GFR relaxation itself covers micro and small enterprises only, so a medium enterprise would be wrongly exempted.
+
+\paragraph{Failure modes.} The engine can go wrong in three places. The retriever may miss the clause, in which case the extractor has nothing to read. The extractor may read a figure wrongly, for instance taking the turnover of the previous year for the required turnover. And the vendor profile may be out of date. The first two are the reasons that every rule carries a page number and a confidence: the vendor can open the page and check. The third is outside the engine's control.
+
+\section{Statutory Payment Recovery}
+\label{sec:payment}
+Section 15 of the MSMED Act sets the payment period at 45 days, and Section 16 makes the buyer liable for compound interest with monthly rests at three times the RBI bank rate \cite{msmedact2006}. The module (\texttt{payment\_tracker.py}) uses a bank rate of 6.5\%, so $r=19.5\%$ a year. With $D$ the days from invoice to payment, the overdue days are $D-45$ if that is positive, and the number of monthly rests is $m=\lceil (D-45)/30\rceil$. The amount owed is
+\begin{equation}
+A=P\left(1+\frac{r}{12}\right)^{m},\qquad I=A-P.
+\end{equation}
+
+\paragraph{Worked examples.} An invoice of Rs~5{,}00{,}000 paid 90 days after the invoice date is 45 days overdue, so $m=2$ and
+\begin{equation}
+I=500000\left[(1.01625)^2-1\right]\approx \text{Rs}~16{,}382.
+\end{equation}
+A smaller invoice of Rs~2{,}00{,}000 paid after 120 days is 75 days overdue, so $m=\lceil 75/30\rceil=3$ and $I=200000\,[(1.01625)^3-1]\approx\text{Rs}~9{,}909$. The monthly rate is $19.5/12=1.625\%$ in both cases.
+
+\paragraph{Assumptions.} Rounding part-months up slightly overstates the interest, and measuring from the invoice date rather than from acceptance is a known simplification. The bank rate is a constant in the code and would need to be updated when the RBI changes it, so the figures above are illustrative at a 6.5\% rate; we did not check that value against the rate currently notified by the RBI, and it is not a statement of the current statutory rate. The invoice itself is read by a vision model, but only the extracted principal and dates enter the formula, and the vendor confirms them before a draft demand notice is produced. A wrong date therefore costs the vendor a correction, not a wrong legal claim.
+
+\section{Corrigendum Differ}
+\label{sec:differ}
+Both documents are split into clauses and embedded with the same MiniLM model. For each original clause the most similar amended clause is found by cosine similarity, and the pair is flagged when that best similarity is below 0.75 (\texttt{semantic\_differ.py}). Comparing by embedding and not by character difference means that a reworded but equivalent clause is not flagged. The method has two weaknesses that Chapter~\ref{ch:results} does not evaluate systematically. Sentence embeddings change very little when only a number is altered. In a quick check on hand-written clause pairs (not a systematic evaluation), raising a turnover requirement from Rs~2 crore to Rs~5 crore gave a cosine similarity of 0.96, raising an EMD tenfold gave 0.95, and moving a deadline gave 0.95; even a pair that raised the experience requirement from three to ten years and added a new condition scored 0.81. All of these stay above 0.75 and would go unflagged. The clause pairs are not part of the repository's experiment scripts, so these four values are indicative only and cannot be reproduced from this thesis. And because the search runs from the original clauses, a wholly new clause has nothing to match against. A numeric and date comparison alongside the embedding, and a search in both directions, are the obvious remedies and are listed under future work.
+
+A model then labels each flagged pair \texttt{RESTRICTIVE}, \texttt{PERMISSIVE} or \texttt{NEUTRAL}; this is the only model step, and because the label sets the base score it does influence the verdict. The rule is therefore that the model reads and labels while code computes, not that the model has no effect. The rest is arithmetic (\texttt{corruption\_risk\_scorer.py}). Each restrictive clause adds 0.3 and each neutral clause 0.1; the sum is capped at 1. A time multiplier $\tau$ is 3.0 if the amendment is at most 2 days before the deadline, 1.5 if at most 7 days, and 1.0 otherwise. The manipulation probability is
+\begin{equation}
+p=\min\bigl(0.99,\ \tau\cdot\min(1,\textstyle\sum_k b_k)\bigr),
+\end{equation}
+where $b_k$ is the base score of flagged clause $k$. A result is \texttt{CRITICAL} for $p\ge 0.75$, \texttt{SUSPICIOUS} for $p\ge 0.40$ and \texttt{SAFE} otherwise. The multiplier is a step function.
+
+\paragraph{Worked example.} Suppose an amendment changes one clause and the model labels it restrictive, so $\sum_k b_k=0.3$. The risk depends on timing alone:
+\begin{center}
+\small
+\begin{tabular}{@{}lccl@{}}
+\toprule
+\textbf{Amendment issued} & $\tau$ & $p$ & \textbf{Verdict} \\
+\midrule
+10 days before deadline & 1.0 & 0.30 & \texttt{SAFE} \\
+6 days before deadline & 1.5 & 0.45 & \texttt{SUSPICIOUS} \\
+1 day before deadline & 3.0 & 0.90 & \texttt{CRITICAL} \\
+\bottomrule
+\end{tabular}
+\end{center}
+The same clause change is treated as harmless early and as critical at the last moment, which is the behaviour intended: a restrictive change that leaves bidders time to respond is ordinary, and one that does not is a warning sign. The step function makes the thresholds easy to explain to a reviewer, at the cost of a jump at 2 and 7 days.

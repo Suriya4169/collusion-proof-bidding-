@@ -1,0 +1,224 @@
+%Based on the Amrita Vishwa Vidyapeetham thesis template (Dept. of Artificial Intelligence)
+
+\documentclass[a4paper, 12pt]{report}
+\usepackage[margin=0.8in]{geometry}
+
+\usepackage{bold-extra}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage [english]{babel}
+\usepackage [autostyle, english = american]{csquotes}
+\MakeOuterQuote{"}
+\usepackage{setspace}
+\onehalfspacing
+\graphicspath{{images/}}
+\usepackage{amsthm}
+\usepackage{array}
+\usepackage{cite}
+\usepackage{longtable}
+\usepackage{fancyhdr}
+\usepackage{titletoc}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{tikz}
+\usetikzlibrary{positioning}
+\usepackage{microtype}
+\usepackage{url}
+\theoremstyle{definition}
+\newtheorem{Definition}{Definition}[section]
+\emergencystretch=3em
+\setlength{\parskip}{3pt}
+
+\begin{document}
+	\pagenumbering{gobble}
+	\thispagestyle{empty}
+	\begin{large}
+		\begin{center}
+			{\Large\bfseries{PROCUREGUARD-AI: A NEUROSYMBOLIC PLATFORM FOR MSME TENDER COMPLIANCE AND PUBLIC PROCUREMENT INTEGRITY}}\\
+			\vspace{1.3cm}
+			A Thesis \\
+			\vspace{.1cm}
+			Submitted in partial fulfilment for the Degree of\\
+			\vspace{.1cm}
+			BACHELOR OF TECHNOLOGY\\
+			\vspace{.1cm}
+            in
+            \vspace{.1cm}
+            \\ ARTIFICIAL INTELLIGENCE AND DATA SCIENCE \\
+			\vspace{1cm}
+			by\\ \vspace{0.2cm}
+			\vspace{.1cm}
+			{\Large\bfseries{AAKASH RAJ V (CB.AI.U4AID23106)}} \\
+            {\Large\bfseries{JEEVAKAMAL K R (CB.AI.U4AID23115)}} \\
+            {\Large\bfseries{DARANI KARTHIK R (CB.AI.U4AID23137)}} \\
+            {\Large\bfseries{SURIYA DHARSAUN K G (CB.AI.U4AID23144)}} \\
+            \vspace{3cm}
+
+			\includegraphics[scale=0.8]{univA.png}\\
+			\vfill
+			DEPARTMENT OF ARTIFICIAL INTELLIGENCE\\
+			\Large{\textbf{AMRITA VISHWA VIDYAPEETHAM}}\\
+			{\large COIMBATORE CAMPUS (INDIA)}\\
+			\vspace*{.3cm}
+			October 2026
+		\end{center}
+	\end{large}
+	%------------------------------------------------------------------------------------
+	\newpage
+	\begin{center}
+		{\large DEPARTMENT OF ARTIFICIAL INTELLIGENCE}\\
+		\Large{ \textbf{AMRITA VISHWA VIDYAPEETHAM}}\\
+			{\large COIMBATORE CAMPUS}\\
+		\vspace*{2.2cm}
+		\includegraphics[scale=0.8]{univA.png}\\
+		\vspace*{1.5cm}
+		{\Large \textbf{BONAFIDE CERTIFICATE}}
+	\end{center}
+	\vspace*{.8cm}
+	\noindent This is to certify that the thesis entitled \enquote{\textbf{ProcureGuard-AI: A Neurosymbolic Platform for MSME Tender Compliance and Public Procurement Integrity}} submitted by \textbf{Aakash Raj V., Roll. No: CB.AI.U4AID23106}, \textbf{Jeevakamal K R., Roll. No: CB.AI.U4AID23115}, \textbf{Darani Karthik R., Roll. No: CB.AI.U4AID23137} and \textbf{Suriya Dharsaun K G., Roll. No: CB.AI.U4AID23144} for the award of the \textbf{Degree of Bachelor of Technology} under the \textbf{Faculty of Engineering} is a bonafide record of the work carried out by them under my guidance and supervision at \enquote{Department of Artificial Intelligence}, Amrita Vishwa Vidyapeetham, Coimbatore Campus.\\
+    \vfill
+    Submitted for the examination held on .........
+    \vfill
+    \textbf{INTERNAL EXAMINER}    \hspace{5cm}      \textbf{EXTERNAL EXAMINER}
+    \vfill
+\begin{center}
+		\textbf{Dr. Premjith B.}\\
+	Thesis Advisor,\\
+	Assistant Professor (Sr. Gd.),\\
+	Amrita School of Artificial Intelligence,\\
+	Amrita Vishwa Vidyapeetham,\\
+	Coimbatore Campus,\\
+	India.
+\end{center}
+
+	%-------------------------------------------------------------------------------
+	\newpage
+	\begin{center}
+	{\large DEPARTMENT OF ARTIFICIAL INTELLIGENCE}\\
+	\Large{ \textbf{AMRITA VISHWA VIDYAPEETHAM}}\\
+	{\large COIMBATORE CAMPUS}\\
+		\vspace*{2.5cm}
+		\large {\textbf{DECLARATION}}
+		\vspace*{.3cm}
+	\end{center}
+
+	\noindent We, \textbf{Aakash Raj V.}, \textbf{Reg. No: CB.AI.U4AID23106}, \textbf{Jeevakamal K R.}, \textbf{Reg. No: CB.AI.U4AID23115}, \textbf{Darani Karthik R.}, \textbf{Reg. No: CB.AI.U4AID23137} and \textbf{Suriya Dharsaun K G.}, \textbf{Reg. No: CB.AI.U4AID23144}, hereby declare that this thesis entitled \enquote{\textbf{ProcureGuard-AI: A Neurosymbolic Platform for MSME Tender Compliance and Public Procurement Integrity}} is the record of the original work done by us under the guidance of \textbf{Dr. Premjith B.}, Assistant Professor (Sr. Gd.), Amrita School of Artificial Intelligence, Amrita Vishwa Vidyapeetham, Coimbatore Campus. To the best of our knowledge, this work has not formed the basis for the award of any degree/diploma/associateship/fellowship or a similar award to any candidate in any University.\\\\
+
+	\vspace*{1cm}
+	\noindent{\bf Place:\hfill Signature of the Students} \\
+	\noindent {\bf Date: }
+	\vfill
+	\begin{center}
+		\large{COUNTERSIGNED}\\
+	\end{center}
+	\vspace{0.6in}
+
+\begin{center}
+		\textbf{Dr. K.P Soman}\\
+	Professor and Dean, \\
+	Department of Artificial Intelligence \\ Amrita Vishwa Vidyapeetham,\\
+	Coimbatore Campus,\\
+	India.
+\end{center}
+
+	%-----------------------------------------------------------------------------
+	\clearpage
+	\pagenumbering{roman}
+	\tableofcontents
+
+	\chapter*{Acknowledgements}
+	\addcontentsline{toc}{chapter}{Acknowledgements}
+	We thank our thesis advisor, Dr. Premjith B., for guidance throughout this project, and the Department of Artificial Intelligence at Amrita Vishwa Vidyapeetham for the facilities it provided. Each of us also thanks the other team members, whose modules together form the platform described here. We are grateful to our families and friends for their patience while this report was being written.\\
+	\vspace{1cm}
+	\begin{flushright}
+		AAKASH RAJ V \\ JEEVAKAMAL K R \\ DARANI KARTHIK R \\ SURIYA DHARSAUN K G
+	\end{flushright}
+	\listoffigures
+	\addcontentsline{toc}{chapter}{List of figures}
+	\listoftables
+	\addcontentsline{toc}{chapter}{List of tables}
+	\newpage
+\section*{{\huge Abbreviations}\hfill} \addcontentsline{toc}{chapter}{\textbf{Abbreviations}}
+\vspace{1.2cm}
+\begin{tabular}{lll}
+CDS ~~~~&--&~~~~ Compliance Distance Score\\
+DPDP ~~~~&--&~~~~ Digital Personal Data Protection\\
+EM ~~~~&--&~~~~ Expectation--Maximisation\\
+EMD ~~~~&--&~~~~ Earnest Money Deposit\\
+GeM ~~~~&--&~~~~ Government e-Marketplace\\
+GFR ~~~~&--&~~~~ General Financial Rules\\
+GMM ~~~~&--&~~~~ Gaussian Mixture Model\\
+JV ~~~~&--&~~~~ Joint Venture\\
+JWT ~~~~&--&~~~~ JSON Web Token\\
+LLM ~~~~&--&~~~~ Large Language Model\\
+MAD ~~~~&--&~~~~ Median Absolute Deviation\\
+MCP ~~~~&--&~~~~ Model Context Protocol\\
+M2M ~~~~&--&~~~~ Machine-to-Machine\\
+MSE ~~~~&--&~~~~ Micro and Small Enterprises\\
+MSME ~~~~&--&~~~~ Micro, Small and Medium Enterprises\\
+MSMED ~~~~&--&~~~~ Micro, Small and Medium Enterprises Development (Act)\\
+OCD ~~~~&--&~~~~ Overall Compliance Distance\\
+OCR ~~~~&--&~~~~ Optical Character Recognition\\
+OECD ~~~~&--&~~~~ Organisation for Economic Co-operation and Development\\
+RAG ~~~~&--&~~~~ Retrieval-Augmented Generation\\
+RBI ~~~~&--&~~~~ Reserve Bank of India\\
+ROC-AUC ~~~~&--&~~~~ Area Under the Receiver Operating Characteristic Curve\\
+SDK ~~~~&--&~~~~ Software Development Kit\\
+\end{tabular}
+\newpage
+\section*{{\huge List of symbols}\hfill} \addcontentsline{toc}{chapter}{\textbf{List of symbols}}
+\vspace{1.2cm}
+\begin{tabular}{lll}
+$R,\ A$ ~~~~&--&~~~~ Required value and vendor's actual value of a rule\\
+$w(d)$ ~~~~&--&~~~~ Evidence weight of a shared attribute of degree $d$\\
+$B_t,\ C_t,\ D_t$ ~~~~&--&~~~~ Balance, credit and debit of ledger row $t$\\
+$H_k,\ F_k$ ~~~~&--&~~~~ Hold time and flight time of keystroke $k$\\
+$\tau$ ~~~~&--&~~~~ Deadline-proximity multiplier\\
+$B_{\mathrm{ref}}$, $B_{\min}$ ~~~~&--&~~~~ Independent reference price of a tender; lowest admissible bid\\
+$r,\ m$ ~~~~&--&~~~~ Annual interest rate; number of monthly rests\\
+$\rho_i$ ~~~~&--&~~~~ Partner-sharing fraction of bidder $i$ (Eq.~5.2)\\
+$u_i$ ~~~~&--&~~~~ Equipment uniqueness factor of bidder $i$ (Section~5.4)\\
+$S_a,\ S_o,\ S_c$ ~~~~&--&~~~~ Asset, owner and network components of $A_i$\\
+$s_{ik},\ f_{ik}$ ~~~~&--&~~~~ Successful and failed projects of bidder $i$ with client $k$\\
+$S_{ik},\ w_k$ ~~~~&--&~~~~ Score of bidder $i$ from agent $k$ and its weight in $Z_i$\\
+$\mathbf{m}_j,\ J$ ~~~~&--&~~~~ Mean of mixture component $j$; number of components\\
+$A_i$ ~~~~&--&~~~~ Anomaly score of bidder $i$\\
+$Z$ ~~~~&--&~~~~ Robust $Z$-score of the recent balance (Section~5.2)\\
+$\delta,\ \alpha,\ \beta,\ \gamma,\ \mu$ ~~~~&--&~~~~ Trust-optimizer price blend, Beta prior, legal and collusion weights\\
+$\eta_j,\ C_{ij}$ ~~~~&--&~~~~ Per-tender weight multiplier and confidence of agent $j$\\
+$T_i$ ~~~~&--&~~~~ Fused trust value of bidder $i$\\
+$Z_i$ ~~~~&--&~~~~ Final ranking score of bidder $i$\\
+\end{tabular}
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+Small suppliers in Indian public procurement lose bids on technicalities buried in tender documents of a hundred pages or more, wait months for statutory payments, and have no way to notice when a clause is quietly changed days before the deadline. Auditors face the opposite problem: they review tenders one at a time and cannot easily see cartels, doctored bank statements or scripted bidding. Handing these decisions to a large language model is unsafe, because the model can invent a number, gives different answers on different runs, and leaves no verifiable trail.
+
+This thesis describes ProcureGuard-AI, a platform with a vendor portal and an auditor portal in which language models only read and explain text, while every eligibility, interest, solvency, collusion and award result is computed by deterministic, tested code (the only model labels that enter a score are those on corrigendum clauses). The report documents the engines behind each result: a retrieval and rule-extraction pipeline with a Compliance Distance Score, a compound-interest calculator for the MSMED Act, a corrigendum differ, a bipartite cartel graph with a public-infrastructure cap, a ledger verifier that separates scanning errors from tampering, a Gaussian-mixture keystroke detector, and a Bayesian trust optimizer.
+
+All evaluation uses synthetic data. On simulated typing sessions the keystroke detector flags 4.6\% of genuine humans, detects every regular script and burst injection, but only 54.6\% of adaptive bots (ROC-AUC 0.958 over the three core attack types). In a controlled ledger experiment, character-confusion repair cleared 483 of 500 statements with scanning noise (96.6\%) while still flagging all 500 tampered ones. In a cartel experiment the engine recovered all 120 planted rings but removed only 29.9\% of false pairs at the default setting; a sweep of the public-infrastructure cap shows that this figure is a tuning choice, not a fixed property. The keystroke result also has a weak side: when one human typing style is withheld from training, 51--81\% of its sessions are flagged. No real procurement data was available, so real-world accuracy remains unproven.
+
+\medskip
+\noindent\textbf{Keywords:} public procurement, MSME, neurosymbolic AI, retrieval-augmented generation, collusion detection, bank-statement forensics, keystroke dynamics.
+
+\clearpage
+\pagenumbering{arabic}
+\setcounter{page}{1}
+\input{chapters/ch1}
+\input{chapters/ch2}
+\input{chapters/ch3}
+\input{chapters/ch4}
+\input{chapters/ch5}
+\input{chapters/ch6}
+\input{chapters/ch7}
+\appendix
+\input{chapters/appendix}
+
+\newpage
+\renewcommand{\bibname}{References}
+\bibliographystyle{ieeetr}
+\addcontentsline{toc}{chapter}{References}
+\bibliography{mybib}
+
+\end{document}
